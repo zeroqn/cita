@@ -52,4 +52,3 @@ pid_file="/proc/${cita_pid}/cmdline"
 while [ -e ${pid_file} ];do
     sleep 3;
 done
-
