@@ -1,8 +1,6 @@
-pragma solidity ^0.4.24;
+pragma solidity ^0.4.14;
 
-import "../../src/native/CrossChain.sol";
-
-contract MyToken is CrossChain {
+contract MyToken {
     /* This creates an array with all balances */
     mapping (address => uint256) public balanceOf;
 
@@ -23,26 +21,48 @@ contract MyToken is CrossChain {
         // Add the same to the recipient
     }
 
-    function getBalance(address addr) public view returns (uint256) {
-        return balanceOf[addr];
+    function get_balance(address _to) public constant returns (uint256) {
+        return balanceOf[_to];
     }
 
-    uint256 txDataSize = 0x20;
+    event cross_chain(uint32 from_chain_id, uint32 to_chain_id, address dest_contract, uint256 hasher, uint256 nonce);
+    event recv_cross_chain(uint sender, bytes data);
 
-    function sendToSideChain(
-        uint32 toChainId,
-        address destContract,
-        bytes txData
-    ) public {
-        require(txData.length == txDataSize);
-        uint256 value;
+    uint256 crosschain_send_nonce;
+    uint256 crosschain_recv_nonce;
+    uint256 RECV_FUNC_HASHER = 0x9b8a78eb;
+    // size as agrs[2..] of send_to_side_chain
+    uint256 DATA_SIZE = 0x20;  // for this demo is _value
+
+    function get_cross_chain_nonce() public constant returns (uint256) {
+        return crosschain_recv_nonce;
+    }
+
+    function send_to_side_chain(uint32 to_chain_id, address dest_contract, uint256 _value) public {
+        require(balanceOf[msg.sender] >= _value);
+        balanceOf[msg.sender] -= _value;
+        uint32 from_chain_id = get_from_chain_id();
+        cross_chain(from_chain_id, to_chain_id, dest_contract, RECV_FUNC_HASHER, crosschain_send_nonce);
+        crosschain_send_nonce = crosschain_send_nonce + 1;
+    }
+
+    function get_from_chain_id() public constant returns (uint32) {
+        // ChainManager: Contract
+        address chainManagerAddr = 0xffFFFfffFFfFFfFFFFffFFFfFfFFffFFfF020002;
+        // getChainId() function
+        bytes4 getChainIdHash = bytes4(keccak256("getChainId()"));
+
+        uint256 result;
+        uint256 cid;
+
         assembly {
-            value := mload(add(txData, 0x20))
+            let ptr := mload(0x40)
+            mstore(ptr, getChainIdHash)
+            result := call(20000, chainManagerAddr, 0, ptr, 0x4, ptr, 0x20)
+            switch eq(result, 0) case 1 { revert(ptr, 0) }
+            cid := mload(ptr)
         }
-        require(balanceOf[msg.sender] >= value);
-        bytes4 destFuncHasher = bytes4(keccak256("recvFromSideChain(bytes)"));
-        sendTransaction(toChainId, destContract, destFuncHasher);
-        balanceOf[msg.sender] -= value;
+        return uint32(cid);
     }
 
     // verify_proof need:
@@ -52,14 +72,49 @@ contract MyToken is CrossChain {
     // check hasher == RECV_FUNC_HASHER
     // check cross_chain_nonce == cross_chain_nonce
     // extract origin tx sender and origin tx data
-    function recvFromSideChain(bytes txProof) public {
-        address sender;
-        bytes memory txData;
-        (sender, txData) = verifyTransaction(txProof, txDataSize);
+    function recv_from_side_chain(bytes tx_proof) public {
+        uint hasher = RECV_FUNC_HASHER;
+        uint nonce = crosschain_recv_nonce;
+        uint len = tx_proof.length;
+        uint sender;
+        uint data_size = DATA_SIZE;
+        bytes memory data = new bytes(data_size);
+
+        // (origin_tx_sender, origin_tx_data) = CrossChainVerify(this, RECV_FUNC_HASHER, crosschain_recv_nonce, proof_len, tx_proof));
+        assembly {
+            let _calldata := mload(0x40)   //Find empty storage location using "free memory pointer"
+            mstore(_calldata, 0)           //Place signature at begining of empty storage
+            mstore(add(_calldata, 0x04), address)         //Place first argument directly next to signature
+            mstore(add(_calldata, 0x24), hasher)          //Place second argument next to first, padded to 32 bytes
+            mstore(add(_calldata, 0x44), nonce)
+            mstore(add(_calldata, 0x64), len)
+            calldatacopy(add(_calldata, 0x84), 0x44, sub(calldatasize, 0x44)) // skip hasher and first arg
+
+            switch call(                     //This is the critical change (Pop the top stack value)
+                    100000,                  //100k gas
+                    0xffFfffFfFFFfFFfffFFFffffFfFfffFfFF030002,
+                    0,                       //No value
+                    _calldata,               //Inputs are stored at location _calldata
+                    add(calldatasize, 0x40), //Inputs are xx bytes long
+                    _calldata,               //Store output over input (saves space)
+                    add(data_size, 0x20))    //Outputs less than calldatasize
+            case 0 { revert(0, 0) }
+            default {
+                sender := mload(_calldata)
+                returndatacopy(data, 0x20, data_size)
+                mstore(0x40, _calldata)
+            }
+        }
+        crosschain_recv_nonce = crosschain_recv_nonce + 1;
+
+        recv_cross_chain(sender, data);
+
+        address origin_tx_sender = address(sender);
         uint256 value;
         assembly {
-            value := mload(add(txData, 0x20))
+            value := mload(data)
         }
-        balanceOf[sender] += value;
+
+        balanceOf[origin_tx_sender] += value;
     }
 }

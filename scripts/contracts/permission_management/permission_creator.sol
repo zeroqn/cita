@@ -1,14 +1,15 @@
-pragma solidity ^0.4.24;
+pragma solidity ^0.4.14;
 
 import "./permission.sol";
-import "../common/address.sol";
 
 
 /// @title Permission factory contract to create permission contract
 /// @author ["Cryptape Technologies <contact@cryptape.com>"]
 /// @notice The address:0xffFFFffFfFFffffFffffFFfFffffFfFFFF020005
 ///         The interface: None
-contract PermissionCreator is ReservedAddress {
+contract PermissionCreator {
+
+    address permissionManagementAddr = 0xffFffFffFFffFFFFFfFfFFfFFFFfffFFff020004;
 
     event PermissionCreated(address indexed _id, bytes32 indexed _name, address[] _conts, bytes4[] _funcs);
 
@@ -24,6 +25,6 @@ contract PermissionCreator is ReservedAddress {
         require(permissionManagementAddr == msg.sender);
 
         permissionAddress = new Permission(_name, _conts, _funcs);
-        emit PermissionCreated(permissionAddress, _name, _conts, _funcs);
+        PermissionCreated(permissionAddress, _name, _conts, _funcs);
     }
 }

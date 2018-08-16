@@ -1,14 +1,15 @@
-pragma solidity ^0.4.24;
+pragma solidity ^0.4.14;
 
-import "../lib/address_array.sol";
-import "../common/address.sol";
+import "../common/address_array.sol";
 
 
 /// @title Group contract
 /// @author ["Cryptape Technologies <contact@cryptape.com>"]
 /// @notice The address: Created by permissionCreator
 ///         The interface can be called: Only query type
-contract Group is ReservedAddress {
+contract Group {
+
+    address userManagementAddr = 0xFFFffFFfffffFFfffFFffffFFFffFfFffF02000a;
 
     bytes32 name;
     address parent;
@@ -28,13 +29,13 @@ contract Group is ReservedAddress {
     }
 
     /// @notice Constructor
-    constructor(address _parent, bytes32 _name, address[] _accounts)
+    function Group(address _parent, bytes32 _name, address[] _accounts)
         public
     {
         parent = _parent;
         name = _name;
         accounts = _accounts;
-        emit GroupNewed(_parent, _name, _accounts);
+        GroupNewed(_parent, _name, _accounts);
     }
 
     /// @notice Add accounts
@@ -50,7 +51,7 @@ contract Group is ReservedAddress {
                 accounts.push(_accounts[i]);
         }
 
-        emit AccountsAdded(_accounts);
+        AccountsAdded(_accounts);
         return true;
     }
 
@@ -67,7 +68,7 @@ contract Group is ReservedAddress {
         for (uint i = 0; i < _accounts.length; i++)
             assert(AddressArray.remove(_accounts[i], accounts));
 
-        emit AccountsDeleted(_accounts);
+        AccountsDeleted(_accounts);
         return true;
     }
 
@@ -79,7 +80,7 @@ contract Group is ReservedAddress {
         onlyUserManagement
         returns (bool)
     {
-        emit NameUpdated(name, _name);
+        NameUpdated(name, _name);
         name = _name;
         return true;
     }
@@ -93,7 +94,7 @@ contract Group is ReservedAddress {
         returns (bool)
     {
         assert(AddressArray.remove(_child, children));
-        emit ChildDeleted(_child);
+        ChildDeleted(_child);
         return true;
     }
 
@@ -108,7 +109,7 @@ contract Group is ReservedAddress {
         if (!AddressArray.exist(_child, children))
             children.push(_child);
 
-        emit ChildAdded(_child);
+        ChildAdded(_child);
         return true;
     }
 
@@ -117,8 +118,10 @@ contract Group is ReservedAddress {
     function close()
         public
         onlyUserManagement
+        returns (bool)
     {
         selfdestruct(msg.sender);
+        return true;
     }
 
     /// @notice Query the information of the group
@@ -126,7 +129,7 @@ contract Group is ReservedAddress {
     /// @return Name and accounts of group
     function queryInfo()
         public
-        view
+        constant
         returns (bytes32, address[])
     {
         return (name, accounts);
@@ -136,7 +139,7 @@ contract Group is ReservedAddress {
     /// @return The name of group
     function queryName()
         public
-        view
+        constant
         returns (bytes32)
     {
         return name;
@@ -146,7 +149,7 @@ contract Group is ReservedAddress {
     /// @return The accounts of group
     function queryAccounts()
         public
-        view
+        constant
         returns (address[])
     {
         return accounts;
@@ -157,7 +160,7 @@ contract Group is ReservedAddress {
     /// @return The children of group
     function queryChild()
         public
-        view
+        constant
         returns (address[])
     {
         return children;
@@ -167,7 +170,7 @@ contract Group is ReservedAddress {
     /// @return The number of the children group
     function queryChildLength()
         public
-        view
+        constant
         returns (uint)
     {
         return children.length;
@@ -177,7 +180,7 @@ contract Group is ReservedAddress {
     /// @return The parent of the group
     function queryParent()
         public
-        view
+        constant
         returns (address)
     {
         return parent;
@@ -187,7 +190,7 @@ contract Group is ReservedAddress {
     /// @return Ture if the account in the group, otherwise false
     function inGroup(address _account)
         public
-        view
+        constant
         returns (bool)
     {
         return AddressArray.exist(_account, accounts);

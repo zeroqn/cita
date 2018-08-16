@@ -1,9 +1,8 @@
-pragma solidity ^0.4.24;
+pragma solidity ^0.4.14;
 
-import "../lib/safe_math.sol";
-import "../common/error.sol";
-import "../common/admin.sol";
-import "../permission_management/authorization.sol";
+import "../common/address_array.sol";
+import "../common/SafeMath.sol";
+import "./error.sol";
 
 
 /// @title The interface of node_manager
@@ -12,41 +11,48 @@ interface NodeInterface {
 
     event ApproveNode(address indexed _node);
     event DeleteNode(address indexed _node);
+    event AddAdmin(address indexed _account, address indexed _sender);
     event SetStake(address indexed _node, uint _stake);
 
+    /// @notice Add an admin
+    function addAdmin(address) public returns (bool);
     /// @notice Approve to be consensus node. status will be start
-    function approveNode(address _node) external returns (bool);
+    function approveNode(address _node) public returns (bool);
 
     /// @notice Delete the consensus node that has been approved. status will be close
-    function deleteNode(address _node) external returns (bool);
+    function deleteNode(address _node) public returns (bool);
 
     /// @notice List the consensus nodes that have been approved
     /// which means list the node whose status is start
-    function listNode() external view returns (address[]);
+    function listNode() public constant returns (address[]);
 
     /// @notice Set node stake
-    function setStake(address _node, uint64 stake) external;
+    function setStake(address _node, uint64 stake) public;
     /*
      * @notice Get the status of the node:
      * @return 0: Close
      * @return 1: Start
      */
-    function getStatus(address _node) external view returns (uint8);
+    function getStatus(address _node) public constant returns (uint8);
+
+    /// @notice Check the account is admin
+    function isAdmin(address _account) public constant returns (bool);
 
     /// @notice Node stake list
-    function listStake() external view returns (uint64[] _stakes);
+    function listStake() public constant returns (uint64[] _stakes);
 
     /// @notice Stake permillage
-    function stakePermillage(address _node) external view returns (uint64);
+    function stakePermillage(address _node) public constant returns (uint64);
 }
 
 
 /// @title Node manager contract
 /// @author ["Cryptape Technologies <contact@cryptape.com>"]
 /// @notice The address: 0xffffffffffffffffffffffffffffffffff020001
-contract NodeManager is NodeInterface, Error, ReservedAddress, EconomicalType {
+contract NodeManager is NodeInterface, Error {
 
     mapping(address => NodeStatus) public status;
+    mapping(address => bool) admins;
     // Recode the operation of the block
     mapping(uint => bool) block_op;
     // Consensus node list
@@ -56,16 +62,21 @@ contract NodeManager is NodeInterface, Error, ReservedAddress, EconomicalType {
     // Default: Close
     enum NodeStatus { Close, Start }
 
-    Admin admin = Admin(adminAddr);
-    Authorization auth = Authorization(authorizationAddr);
-    SysConfig sysConfig = SysConfig(sysConfigAddr);
+    modifier onlyAdmin {
+        if (admins[msg.sender])
+            _;
+        else {
+            ErrorLog(ErrorType.NotAdmin, "Not the admin account");
+            return;
+        }
+    }
 
     // Should operate one time in a block
     modifier oneOperate {
         if (!block_op[block.number])
             _;
         else {
-            emit ErrorLog(ErrorType.NotOneOperate, "should operate one time in a block");
+            ErrorLog(ErrorType.NotOneOperate, "should operate one time in a block");
             return;
         }
     }
@@ -74,7 +85,7 @@ contract NodeManager is NodeInterface, Error, ReservedAddress, EconomicalType {
         if (NodeStatus.Close == status[_node])
             _;
         else {
-            emit ErrorLog(ErrorType.NotClose, "node does not close");
+            ErrorLog(ErrorType.NotClose, "node does not close");
             return;
         }
     }
@@ -83,32 +94,13 @@ contract NodeManager is NodeInterface, Error, ReservedAddress, EconomicalType {
         if (NodeStatus.Start == status[_node])
             _;
         else {
-            emit ErrorLog(ErrorType.NotStart, "node does not start");
-            return;
-        }
-    }
-
-    modifier onlyAdmin {
-        if (admin.isAdmin(msg.sender))
-            _;
-        else return;
-    }
-
-    modifier checkPermission(address _permission) {
-        require(auth.checkPermission(msg.sender, _permission));
-        _;
-    }
-
-    modifier OnlyChargeModel() {
-        if(sysConfig.getEconomicalModel() == EconomicalModel.Charge) 
-            _;
-        else {
+            ErrorLog(ErrorType.NotStart, "node does not start");
             return;
         }
     }
 
     /// @notice Setup
-    constructor(address[] _nodes, uint64[] _stakes)
+    function NodeManager(address[] _nodes, address[] _admins, uint64[] _stakes)
         public
     {
         // Initialize the address to Start
@@ -118,18 +110,32 @@ contract NodeManager is NodeInterface, Error, ReservedAddress, EconomicalType {
             nodes.push(_nodes[i]);
             stakes[_nodes[i]] = _stakes[i];
         }
+
+        // Initialize the address of admins
+        for (uint j = 0; j < _admins.length; j++) {
+            admins[_admins[j]] = true;
+        }
     }
 
     /// @notice Set node stake
     function setStake(address _node, uint64 stake)
         public
         onlyAdmin
-        checkPermission(builtInPermissions[17])
+    {
+        SetStake(_node, stake);
+        stakes[_node] = stake;
+    }
+
+    /// @notice Add an admin
+    /// @param _account Address of the admin
+    /// @return true if successed, otherwise false
+    function addAdmin(address _account)
+        public
+        onlyAdmin
         returns (bool)
     {
-        require(AddressArray.exist(_node, nodes));
-        emit SetStake(_node, stake);
-        stakes[_node] = stake;
+        admins[_account] = true;
+        AddAdmin(_account, msg.sender);
         return true;
     }
 
@@ -141,13 +147,12 @@ contract NodeManager is NodeInterface, Error, ReservedAddress, EconomicalType {
         onlyAdmin
         oneOperate
         onlyClose(_node)
-        checkPermission(builtInPermissions[15])
         returns (bool)
     {
         status[_node] = NodeStatus.Start;
         block_op[block.number] = true;
         nodes.push(_node);
-        emit ApproveNode(_node);
+        ApproveNode(_node);
         return true;
     }
 
@@ -159,14 +164,13 @@ contract NodeManager is NodeInterface, Error, ReservedAddress, EconomicalType {
         onlyAdmin
         oneOperate
         onlyStart(_node)
-        checkPermission(builtInPermissions[16])
         returns (bool)
     {
         require(AddressArray.remove(_node, nodes));
         block_op[block.number] = false;
         status[_node] = NodeStatus.Close;
         stakes[_node] = 0;
-        emit DeleteNode(_node);
+        DeleteNode(_node);
         return true;
     }
 
@@ -174,7 +178,7 @@ contract NodeManager is NodeInterface, Error, ReservedAddress, EconomicalType {
     /// @return All the consensus nodes
     function listNode()
         public
-        view
+        constant
         returns (address[])
     {
         return nodes;
@@ -185,18 +189,29 @@ contract NodeManager is NodeInterface, Error, ReservedAddress, EconomicalType {
     /// @return The status of the node
     function getStatus(address _node)
         public
-        view
+        constant
         returns (uint8)
     {
         return uint8(status[_node]);
+    }
+
+    /// @notice Check the account is admin
+    /// @param _account The address to be checked
+    /// @return true if it is, otherwise false
+    function isAdmin(address _account)
+        public
+        constant
+        returns (bool)
+    {
+        return admins[_account];
     }
 
     /// @notice Node stake list
     /// @return All the node stake list
     function listStake()
         public
-        view
-        returns (uint64[] _stakes)
+        constant
+        returns (uint64[] memory _stakes)
     {
         _stakes = new uint64[](nodes.length);
         for (uint j = 0; j < nodes.length; j++) {
@@ -211,17 +226,12 @@ contract NodeManager is NodeInterface, Error, ReservedAddress, EconomicalType {
     /// Hare quota
     function stakePermillage(address _node) 
         public 
-        view 
-        OnlyChargeModel
+        constant 
         returns (uint64) 
     {
         uint total;
         for (uint j = 0; j < nodes.length; j++) {
             total = SafeMath.add(uint(total), uint(stakes[nodes[j]]));
-        }
-
-        if(total == 0) {
-            return; 
         }
         return uint64(SafeMath.div(SafeMath.mul(stakes[_node], 1000), total));
     }

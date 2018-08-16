@@ -1,13 +1,11 @@
-pragma solidity ^0.4.24;
-
-import "../common/address.sol";
+pragma solidity ^0.4.14;
 
 
 /// @title Permission contract
 /// @author ["Cryptape Technologies <contact@cryptape.com>"]
 /// @notice The address: Created by permissionCreator
 ///         The interface can be called: Only query type
-contract Permission is ReservedAddress {
+contract Permission {
 
     struct Resource {
         // Contract address
@@ -16,6 +14,7 @@ contract Permission is ReservedAddress {
         bytes4 func;
     }
 
+    address permissionManagementAddr = 0xffFffFffFFffFFFFFfFfFFfFFFFfffFFff020004;
     Resource[] resources;
     bytes32 name;
 
@@ -29,7 +28,7 @@ contract Permission is ReservedAddress {
     }
 
     /// @notice Constructor
-    constructor(bytes32 _name, address[] _conts, bytes4[] _funcs)
+    function Permission(bytes32 _name, address[] _conts, bytes4[] _funcs)
         public
     {
         name = _name;
@@ -61,7 +60,7 @@ contract Permission is ReservedAddress {
         for (uint i = 0; i < _conts.length; i++)
             require(resourceDelete(_conts[i], _funcs[i]));
 
-        emit ResourcesDeleted(_conts, _funcs);
+        ResourcesDeleted(_conts, _funcs);
         return true;
     }
 
@@ -73,7 +72,7 @@ contract Permission is ReservedAddress {
         onlyPermissionManagement
         returns (bool)
     {
-        emit NameUpdated(name, _name);
+        NameUpdated(name, _name);
         name = _name;
         return true;
     }
@@ -83,8 +82,10 @@ contract Permission is ReservedAddress {
     function close()
         public
         onlyPermissionManagement
+        returns (bool)
     {
         selfdestruct(msg.sender);
+        return true;
     }
 
     /// @notice Check resource in the permission
@@ -93,7 +94,7 @@ contract Permission is ReservedAddress {
     /// @return true if in permission, otherwise false
     function inPermission(address cont, bytes4 func)
         public
-        view
+        constant
         returns (bool)
     {
         for (uint i = 0; i < resources.length; i++) {
@@ -108,7 +109,7 @@ contract Permission is ReservedAddress {
     /// @return The information of permission: name and resources
     function queryInfo()
         public
-        view
+        constant
         returns (bytes32, address[], bytes4[])
     {
         uint len = resources.length;
@@ -127,7 +128,7 @@ contract Permission is ReservedAddress {
     /// @return The name of permission
     function queryName()
         public
-        view
+        constant
         returns (bytes32)
     {
         return name;
@@ -137,7 +138,7 @@ contract Permission is ReservedAddress {
     /// @return The resources of permission
     function queryResource()
         public
-        view
+        constant
         returns (address[], bytes4[])
     {
         uint len = resources.length;
@@ -174,7 +175,7 @@ contract Permission is ReservedAddress {
     /// @notice Private: Get the index of the value in the resources
     function resourceIndex(address _cont, bytes4 _func)
         private
-        view
+        constant
         returns (uint i)
     {
         for (i = 0; i < resources.length; i++) {
@@ -195,14 +196,14 @@ contract Permission is ReservedAddress {
             }
         }
 
-        emit ResourcesAdded(_conts, _funcs);
+        ResourcesAdded(_conts, _funcs);
         return true;
     }
 
     /// @notice Private: Check the duplicate resource
     function inResources(address _cont, bytes4 _func)
         private
-        view
+        constant
         returns (bool)
     {
         for (uint i = 0; i < resources.length; i++) {

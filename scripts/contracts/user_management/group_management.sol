@@ -1,9 +1,7 @@
-pragma solidity ^0.4.24;
+pragma solidity ^0.4.14;
 
 import "./group_creator.sol";
-import "../lib/address_array.sol";
-import "../common/address.sol";
-import "../permission_management/authorization.sol";
+import "../common/address_array.sol";
 
 
 /// @title User management using group struct
@@ -12,12 +10,13 @@ import "../permission_management/authorization.sol";
 ///         The interface the can be called: All
 ///         Origin: One group choosed by sender from all his groups
 ///         Target: The target group to be operated
-contract GroupManagement is ReservedAddress {
+contract GroupManagement {
 
+    address rootGroupAddr = 0xfFFfFFFFFffFFfffFFFFfffffFffffFFfF020009;
+    address groupCreatorAddr = 0xfFFffFfFFFFfFFFfFfffffFFfffffffffF02000B;
     GroupCreator groupCreator = GroupCreator(groupCreatorAddr);
 
     address[] groups;
-    Authorization auth = Authorization(authorizationAddr);
 
     event GroupDeleted(address _group);
 
@@ -33,13 +32,8 @@ contract GroupManagement is ReservedAddress {
         _;
     }
 
-    modifier checkPermission(address _permission) {
-        require(auth.checkPermission(msg.sender, _permission));
-        _;
-    }
-
     /// @notice Constructor
-    constructor() public {
+    function GroupManagement() public {
         // Root
         groups.push(rootGroupAddr);
     }
@@ -51,7 +45,6 @@ contract GroupManagement is ReservedAddress {
     /// @return New role's address
     function newGroup(address _origin, bytes32 _name, address[] _accounts)
         external
-        checkPermission(builtInPermissions[10])
         returns (address new_group)
     {
         new_group = groupCreator.createGroup(_origin, _name, _accounts);
@@ -67,7 +60,6 @@ contract GroupManagement is ReservedAddress {
         external
         inGroup(_origin)
         onlyLeafNode(_target)
-        checkPermission(builtInPermissions[11])
         returns (bool)
     {
         require(checkScope(_origin, _target));
@@ -75,10 +67,10 @@ contract GroupManagement is ReservedAddress {
         // Delete it from the parent group
         require(deleteChild(group.queryParent(), _target));
         // Selfdestruct
-        group.close();
+        require(group.close());
         // Remove it from the groups
         AddressArray.remove(_target, groups);
-        emit GroupDeleted(_target);
+        GroupDeleted(_target);
         return true;
     }
 
@@ -90,7 +82,6 @@ contract GroupManagement is ReservedAddress {
     function updateGroupName(address _origin, address _target, bytes32 _name)
         external
         inGroup(_origin)
-        checkPermission(builtInPermissions[12])
         returns (bool)
     {
         require(checkScope(_origin, _target));
@@ -107,7 +98,6 @@ contract GroupManagement is ReservedAddress {
     function addAccounts(address _origin, address _target, address[] _accounts)
         external
         inGroup(_origin)
-        checkPermission(builtInPermissions[12])
         returns (bool)
     {
         require(checkScope(_origin, _target));
@@ -124,7 +114,6 @@ contract GroupManagement is ReservedAddress {
     function deleteAccounts(address _origin, address _target, address[] _accounts)
         external
         inGroup(_origin)
-        checkPermission(builtInPermissions[12])
         returns (bool)
     {
         require(checkScope(_origin, _target));
@@ -140,7 +129,7 @@ contract GroupManagement is ReservedAddress {
     /// @return True if successed, otherwise false
     function checkScope(address _origin, address _target)
         public
-        view
+        constant
         returns (bool)
     {
         address parent = _target;
@@ -158,7 +147,7 @@ contract GroupManagement is ReservedAddress {
     /// @return All groups
     function queryGroups()
         public
-        view
+        constant
         returns (address[])
     {
         return groups;

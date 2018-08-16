@@ -1,14 +1,15 @@
-pragma solidity ^0.4.24;
+pragma solidity ^0.4.14;
 
 import "./group.sol";
-import "../common/address.sol";
 
 
 /// @title Group factory contract to create group contract
 /// @author ["Cryptape Technologies <contact@cryptape.com>"]
 /// @notice The address: 0xfFFffFfFFFFfFFFfFfffffFFfffffffffF02000B
 ///         The interface: None
-contract GroupCreator is ReservedAddress {
+contract GroupCreator {
+
+    address userManagementAddr = 0xFFFffFFfffffFFfffFFffffFFFffFfFffF02000a;
 
     event GroupCreated(address indexed _id, address indexed _parent, bytes32 indexed _name, address[] accounts);
 
@@ -23,6 +24,6 @@ contract GroupCreator is ReservedAddress {
         require(userManagementAddr == msg.sender);
 
         groupAddress = new Group(_parent, _name, _accounts);
-        emit GroupCreated(groupAddress, _parent, _name, _accounts);
+        GroupCreated(groupAddress, _parent, _name, _accounts);
     }
 }

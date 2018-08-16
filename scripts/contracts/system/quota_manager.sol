@@ -1,51 +1,15 @@
-pragma solidity ^0.4.24;
+pragma solidity ^0.4.14;
 
-import "../common/error.sol";
-import "../lib/address_array.sol";
-import "../common/admin.sol";
-import "../common/address.sol";
-import "../permission_management/authorization.sol";
-
-
-/// @title The interface of quota_manager
-/// @author ["Cryptape Technologies <contact@cryptape.com>"]
-interface QuotaInterface {
-    
-    event DefaultAqlSetted(uint indexed _value, address indexed _sender);
-    event BqlSetted(uint indexed _value, address indexed _sender);
-    event AqlSetted(address indexed _account, uint _value, address indexed _sender);
-
-    /// @notice Set the block quota limit
-    function setBQL(uint _value) external returns (bool);
-
-    /// @notice Set the default block quota limit
-    function setDefaultAQL(uint _value) external returns (bool);
-
-    /// @notice Set the account quota limit
-    function setAQL(address _account, uint _value) external returns (bool);
-
-    /// @notice Get all accounts that have account quota limit
-    function getAccounts() external view returns (address[]);
-
-    /// @notice Get all accounts' quotas
-    function getQuotas() external view returns (uint[]);
-
-    /// @notice Get block quota limit
-    function getBQL() external view returns (uint);
-
-    /// @notice Get default account quota limit
-    function getDefaultAQL() external view returns (uint);
-    
-    /// @notice Get account quota limit
-    function getAQL(address _account) external view returns (uint);
-}
+import "./quota_interface.sol";
+import "./error.sol";
 
 
 /// @title Node manager contract
 /// @author ["Cryptape Technologies <contact@cryptape.com>"]
 /// @notice The address: 0xffffffffffffffffffffffffffffffffff020003
-contract QuotaManager is QuotaInterface, Error, ReservedAddress {
+contract QuotaManager is QuotaInterface, Error {
 
+    mapping(address => bool) admins;
     mapping(address => uint) quota;
     // Block quota limit
     uint BQL = 1073741824;
@@ -53,16 +17,23 @@ contract QuotaManager is QuotaInterface, Error, ReservedAddress {
     uint defaultAQL = 268435456;
     address[] accounts;
     uint[] quotas;
-    uint maxLimit = 2 ** 63 - 1;
-    uint baseLimit = 2 ** 22 - 1;
-    Admin admin = Admin(adminAddr);
-    Authorization auth = Authorization(authorizationAddr);
+
+    modifier onlyAdmin {
+        if (admins[msg.sender])
+            _;
+        else {
+            ErrorLog(ErrorType.NotAdmin, "Not the admin account");
+            return;
+        }
+    }
 
     modifier checkBaseLimit(uint _v) {
+        uint maxLimit = 2 ** 63 - 1;
+        uint baseLimit = 2 ** 22 - 1;
         if (_v <= maxLimit && _v >= baseLimit)
             _;
         else {
-            emit ErrorLog(ErrorType.OutOfBaseLimit, "The value is out of base limit");
+            ErrorLog(ErrorType.OutOfBaseLimit, "The value is out of base limit");
             return;
         }
     }
@@ -72,29 +43,32 @@ contract QuotaManager is QuotaInterface, Error, ReservedAddress {
         if (_v > blockLimit)
             _;
         else {
-            emit ErrorLog(ErrorType.OutOfBlockLimit, "The value is out of block limit");
+            ErrorLog(ErrorType.OutOfBlockLimit, "The value is out of block limit");
             return;
         }
     }
 
-    modifier checkPermission(address _permission) {
-        require(auth.checkPermission(msg.sender, _permission));
-        _;
-    }
-
-    modifier onlyAdmin {
-        if (admin.isAdmin(msg.sender))
-            _;
-        else return;
-    }
-
     /// @notice Setup
-    constructor(address _admin)
+    function QuotaManager(address _admin)
         public
     {
-        quota[_admin] = BQL;
+        admins[_admin] = true;
+        quota[_admin] = 1073741824;
         accounts.push(_admin);
-        quotas.push(BQL);
+        quotas.push(1073741824);
+    }
+
+    /// @notice Add an admin
+    /// @param _account Address of the admin
+    /// @return true if successed, otherwise false
+    function addAdmin(address _account)
+        public
+        onlyAdmin
+        returns (bool)
+    {
+        admins[_account] = true;
+        AdminAdded(_account, msg.sender);
+        return true;
     }
 
     /// @notice Set the default account quota limit
@@ -104,11 +78,10 @@ contract QuotaManager is QuotaInterface, Error, ReservedAddress {
         public
         onlyAdmin
         checkBaseLimit(_value)
-        checkPermission(builtInPermissions[18])
         returns (bool)
     {
         defaultAQL = _value;
-        emit DefaultAqlSetted(_value, msg.sender);
+        DefaultAqlSetted(_value, msg.sender);
         return true;
     }
 
@@ -120,19 +93,12 @@ contract QuotaManager is QuotaInterface, Error, ReservedAddress {
         public
         onlyAdmin
         checkBaseLimit(_value)
-        checkPermission(builtInPermissions[18])
         returns (bool)
     {
-        uint i = AddressArray.index(_account, accounts);
-        if (i == accounts.length) {
-            // Not exist
-            accounts.push(_account);
-            quotas.push(_value);
-        } else {
-            quotas[i] = _value;
-        }
         quota[_account] = _value;
-        emit AqlSetted(
+        accounts.push(_account);
+        quotas.push(_value);
+        AqlSetted(
             _account,
             _value,
             msg.sender
@@ -148,19 +114,29 @@ contract QuotaManager is QuotaInterface, Error, ReservedAddress {
         onlyAdmin
         checkBaseLimit(_value)
         checkBlockLimit(_value)
-        checkPermission(builtInPermissions[19])
         returns (bool)
     {
         BQL = _value;
-        emit BqlSetted(_value, msg.sender);
+        BqlSetted(_value, msg.sender);
         return true;
+    }
+
+    /// @notice Check the account is admin
+    /// @param _account The address to be checked
+    /// @return true if it is, otherwise false
+    function isAdmin(address _account)
+        public
+        constant
+        returns (bool)
+    {
+        return admins[_account];
     }
 
     /// @notice Get all accounts that have account quota limit
     /// @return The accounts that have AQL
     function getAccounts()
         public
-        view
+        constant
         returns (address[])
     {
         return accounts;
@@ -170,7 +146,7 @@ contract QuotaManager is QuotaInterface, Error, ReservedAddress {
     /// @return The accounts' quotas
     function getQuotas()
         public
-        view
+        constant
         returns (uint[])
     {
         return quotas;
@@ -180,7 +156,7 @@ contract QuotaManager is QuotaInterface, Error, ReservedAddress {
     /// @return The block quota limit
     function getBQL()
         public
-        view
+        constant
         returns (uint)
     {
         return BQL;
@@ -190,7 +166,7 @@ contract QuotaManager is QuotaInterface, Error, ReservedAddress {
     /// @return The default account quota limit
     function getDefaultAQL()
         public
-        view
+        constant
         returns (uint)
     {
         return defaultAQL;
@@ -200,7 +176,7 @@ contract QuotaManager is QuotaInterface, Error, ReservedAddress {
     /// @return The account quota limit
     function getAQL(address _account)
         public
-        view
+        constant
         returns (uint)
     {
         if (quota[_account] == 0)

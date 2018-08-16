@@ -33,7 +33,6 @@ for binary in \
         cita-relayer-parser \
         snapshot_tool \
         consensus-mock \
-        chain-executor-mock \
         ; do
     cp -rf "target/${type}/${binary}" target/install/bin/
 done

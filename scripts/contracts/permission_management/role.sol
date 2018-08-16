@@ -1,14 +1,13 @@
-pragma solidity ^0.4.24;
+pragma solidity ^0.4.14;
 
-import "../lib/address_array.sol";
-import "../common/address.sol";
+import "../common/address_array.sol";
 
 
 /// @title Role contract
 /// @author ["Cryptape Technologies <contact@cryptape.com>"]
 /// @notice The address: Created by roleCreator
 ///         The interface can be called: Only query type
-contract Role is ReservedAddress {
+contract Role {
 
     event NameUpdated(bytes32 indexed _oldName, bytes32 indexed _newName);
     event PermissionsAdded(address[] _permissions);
@@ -17,6 +16,7 @@ contract Role is ReservedAddress {
 
     bytes32 name;
     address[] permissions;
+    address internal roleManagementAddr = 0xFFFFfFfFFFFFFfFfffFfffffffFffFFffF020007;
 
     modifier onlyRoleManagement {
         require(roleManagementAddr == msg.sender);
@@ -24,12 +24,12 @@ contract Role is ReservedAddress {
     }
 
     /// @notice Constructor
-    constructor(bytes32 _name, address[] _permissions)
+    function Role(bytes32 _name, address[] _permissions)
         public
     {
         name = _name;
         permissions = _permissions;
-        emit RoleCreated(_name, _permissions);
+        RoleCreated(_name, _permissions);
     }
 
     /// @notice Delete the role
@@ -37,8 +37,10 @@ contract Role is ReservedAddress {
     function deleteRole()
         public
         onlyRoleManagement
+        returns (bool)
     {
         close();
+        return true;
     }
 
     /// @notice Update role's name
@@ -49,7 +51,7 @@ contract Role is ReservedAddress {
         onlyRoleManagement
         returns (bool)
     {
-        emit NameUpdated(name, _name);
+        NameUpdated(name, _name);
         name = _name;
         return true;
     }
@@ -67,7 +69,7 @@ contract Role is ReservedAddress {
                 permissions.push(_permissions[index]);
         }
 
-        emit PermissionsAdded(_permissions);
+        PermissionsAdded(_permissions);
         return true;
     }
 
@@ -84,7 +86,7 @@ contract Role is ReservedAddress {
             assert(AddressArray.remove(_permissions[i], permissions));
         }
 
-        emit PermissionsDeleted(_permissions);
+        PermissionsDeleted(_permissions);
         return true;
     }
 
@@ -92,7 +94,7 @@ contract Role is ReservedAddress {
     /// @return The information of role: name and permissions
     function queryRole()
         public
-        view
+        constant
         returns (bytes32, address[])
     {
         return (name, permissions);
@@ -102,7 +104,7 @@ contract Role is ReservedAddress {
     /// @return The name of role
     function queryName()
         public
-        view
+        constant
         returns (bytes32)
     {
         return name;
@@ -112,7 +114,7 @@ contract Role is ReservedAddress {
     /// @return The permissions of role
     function queryPermissions()
         public
-        view
+        constant
         returns (address[])
     {
         return permissions;
@@ -122,7 +124,7 @@ contract Role is ReservedAddress {
     /// @return The number of permission
     function lengthOfPermissions()
         public
-        view
+        constant
         returns (uint)
     {
         return permissions.length;
@@ -132,7 +134,7 @@ contract Role is ReservedAddress {
     /// @return true if in permissions, otherwise false
     function inPermissions(address _permission)
         public
-        view
+        constant
         returns (bool)
     {
         return AddressArray.exist(_permission, permissions);

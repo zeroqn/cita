@@ -1,4 +1,4 @@
-pragma solidity ^0.4.24;
+pragma solidity ^0.4.14;
 
 
 /// @title The enum data of error
@@ -17,5 +17,5 @@ contract Error {
         NotReady
     }
 
-    event ErrorLog(ErrorType indexed errorType, string msg);
+    event ErrorLog(ErrorType indexed errorType, string message);
 }

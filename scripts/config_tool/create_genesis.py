@@ -93,12 +93,9 @@ class GenesisData(object):
         self.timestamp = int(time.time() * 1000) if not timestamp else timestamp
         self.prevhash = DEFAULT_PREVHASH if not prevhash else prevhash
 
-        self.contracts_dir = os.path.join(contracts_dir, 'src')
+        self.contracts_dir = contracts_dir
         self.contracts_docs_dir = contracts_docs_dir
         self.contracts_common_dir = os.path.join(self.contracts_dir, 'common')
-        self.contracts_lib_dir = os.path.join(self.contracts_dir, 'lib')
-        self.contracts_perm_dir = os.path.join(self.contracts_dir, 'permission_management')
-        self.contracts_sys_dir = os.path.join(self.contracts_dir, 'system')
         contracts_list_file = os.path.join(contracts_dir, 'contracts.yml')
         self.load_contracts_list(contracts_list_file)
         self.load_contracts_args(init_data_file)
@@ -141,11 +138,7 @@ class GenesisData(object):
         compiled = solidity.compile_file(
             path,
             combined='bin,abi,userdoc,devdoc,hashes',
-            extra_args='common={} lib={} permission_management={} system={}'.format(
-                self.contracts_common_dir,
-                self.contracts_lib_dir,
-                self.contracts_perm_dir,
-                self.contracts_sys_dir))
+            extra_args='common={}'.format(self.contracts_common_dir))
         data = solidity.solidity_get_contract_data(compiled, path, name)
         if not data['bin']:
             sys.exit(1)
@@ -281,7 +274,7 @@ def core(contracts_dir, contracts_docs_dir, init_data_file, output, timestamp,
     with open(init_data_file, 'r') as stream:
         data = yaml.load(stream)
     address = data['Contracts'][2]['NodeManager'][0]['nodes']
-    super_admin = data['Contracts'][6]['Admin'][0]['admin']
+    super_admin = data['Contracts'][4]['Authorization'][0]['superAdmin']
     address.append(super_admin)
     value = '0xffffffffffffffffffffffffff'
     genesis_data.init_normal_contracts()

@@ -1,14 +1,15 @@
-pragma solidity ^0.4.24;
+pragma solidity ^0.4.14;
 
 import "./role.sol";
-import "../common/address.sol";
 
 
 /// @title Role factory contract to create role contract
 /// @author ["Cryptape Technologies <contact@cryptape.com>"]
 /// @notice The address: 0xffffffffffffffffffffffffffffffffff020008
 ///         The interface: None
-contract RoleCreator is ReservedAddress {
+contract RoleCreator {
+
+    address roleManagementAddr = 0xFFFFfFfFFFFFFfFfffFfffffffFffFFffF020007;
 
     event RoleCreated(address indexed _id, bytes32 indexed _name, address[] indexed _permissions);
 
@@ -23,6 +24,6 @@ contract RoleCreator is ReservedAddress {
         require(roleManagementAddr == msg.sender);
 
         roleAddress = new Role(_name, _permissions);
-        emit RoleCreated(roleAddress, _name, _permissions);
+        RoleCreated(roleAddress, _name, _permissions);
     }
 }

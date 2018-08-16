@@ -1,29 +1,47 @@
-pragma solidity ^0.4.24;
+pragma solidity ^0.4.14;
 
 import "./permission.sol";
-import "../lib/address_array.sol";
-import "../common/address.sol";
-import "../system/sys_config.sol";
+import "../common/address_array.sol";
 
 
 /// @title Authorization about the permission and account
 /// @author ["Cryptape Technologies <contact@cryptape.com>"]
 /// @notice The address: 0xffffffffffffffffffffffffffffffffff020006
 ///         The interface can be called: Only query type
-contract Authorization is ReservedAddress {
+contract Authorization {
+
+    address permissionManagementAddr = 0xffFffFffFFffFFFFFfFfFFfFFFFfffFFff020004;
+    address roleManagementAddr = 0xFFFFfFfFFFFFFfFfffFfffffffFffFFffF020007;
+
+    address newPermissionAddr = 0xfFfFffFffffFFfffFfFfFffFFFfFFfFFFf021010;
+    address deletePermissionAddr = 0xFFfFfffffFFffFfffFffffffFFfFfFfFfF021011;
+    address updatePermissionAddr = 0xfFFfFFfFFFFffffFFFFFfffffFFFFFFFFf021012;
+    address setAuthAddr = 0xfFFFffFffFfffFffFfffFfFFfFFFfFffFf021013;
+    address cancelAuthAddr = 0xfFFFffFfffFFFFffFfFffffFfFFFfffFfF021014;
+    address newRoleAddr = 0xFFFFFfffffFFFfFfffffFfFfffffFFffFf021015;
+    address deleteRoleAddr = 0xfFfFFFFFffFFfFFfFFfFFfFfFFfffFFffF021016;
+    address updateRoleAddr = 0xFFFFffFFFFfFFFFFFfFFffffFFFFFFFFff021017;
+    address setRoleAddr = 0xfFFFfFfFFFFFFffFfFFFFfffFffFfFFFFF021018;
+    address cancelRoleAddr = 0xfFFffffffFffFffFFFFFFFFFffFfffFFfF021019;
+    address newGroupAddr = 0xFFFFffffffffFFfFffFffFFfFfFfFffFFf02101A;
+    address deleteGroupAddr = 0xFFfFfffFffffffffFFfFfFFFFfFFfFfFFF02101B;
+    address updateGroupAddr = 0xFFFfFFfffFFffFffffffFFFFFFfFFffffF02101c;
+    address sendTxAddr = 0xFFffFFFFfFFFFFFfffFfFFffFfFFFFfFFf021000;
+    address createContractAddr = 0xffFFffffFfffFFFfffffFFfFFffFFfFFFf021001;
+
+    address rootGroup = 0xfFFfFFFFFffFFfffFFFFfffffFffffFFfF020009;
 
     mapping(address => address[]) permissions;
     mapping(address => address[]) accounts;
 
     address[] all_accounts;
-    SysConfig sysConfig = SysConfig(sysConfigAddr);
 
     event AuthSetted(address indexed _account, address indexed _permission);
     event AuthCanceled(address indexed _account, address indexed _permission);
     event AuthCleared(address indexed _account);
 
     modifier onlyPermissionManagement {
-        require(permissionManagementAddr == msg.sender || roleAuthAddr == msg.sender );
+        require(permissionManagementAddr == msg.sender || roleManagementAddr == msg.sender );
         _;
     }
 
@@ -33,7 +51,7 @@ contract Authorization is ReservedAddress {
     }
 
     /// @notice Initialize the superAdmin's auth
-    constructor(address _superAdmin) public {
+    function Authorization(address _superAdmin) public {
         _setAuth(_superAdmin, sendTxAddr);
         _setAuth(_superAdmin, createContractAddr);
         _setAuth(_superAdmin, newPermissionAddr);
@@ -49,14 +67,9 @@ contract Authorization is ReservedAddress {
         _setAuth(_superAdmin, newGroupAddr);
         _setAuth(_superAdmin, deleteGroupAddr);
         _setAuth(_superAdmin, updateGroupAddr);
-        _setAuth(_superAdmin, newNodeAddr);
-        _setAuth(_superAdmin, deleteNodeAddr);
-        _setAuth(_superAdmin, updateNodeAddr);
-        _setAuth(_superAdmin, accountQuotaAddr);
-        _setAuth(_superAdmin, blockQuotaAddr);
         // rootGroup: basic permissions
-        _setAuth(rootGroupAddr, sendTxAddr);
-        _setAuth(rootGroupAddr, createContractAddr);
+        _setAuth(rootGroup, sendTxAddr);
+        _setAuth(rootGroup, createContractAddr);
     }
 
     /// @notice Set permission to the account
@@ -83,7 +96,7 @@ contract Authorization is ReservedAddress {
     {
         AddressArray.remove(_account, accounts[_permission]);
         AddressArray.remove(_permission, permissions[_account]);
-        emit AuthCanceled(_account, _permission);
+        AuthCanceled(_account, _permission);
         return true;
     }
 
@@ -103,7 +116,7 @@ contract Authorization is ReservedAddress {
         delete permissions[_account];
         AddressArray.remove(_account, all_accounts);
 
-        emit AuthCleared(_account);
+        AuthCleared(_account);
         return true;
     }
 
@@ -128,7 +141,7 @@ contract Authorization is ReservedAddress {
     /// @return The permissions of account
     function queryPermissions(address _account)
         public
-        view
+        constant
         returns (address[] _permissions)
     {
         return permissions[_account];
@@ -139,7 +152,7 @@ contract Authorization is ReservedAddress {
     /// @return The accounts of permission
     function queryAccounts(address _permission)
         public
-        view
+        constant
         returns (address[] _accounts)
     {
         return accounts[_permission];
@@ -149,7 +162,7 @@ contract Authorization is ReservedAddress {
     /// @return All the accounts
     function queryAllAccounts()
         public
-        view
+        constant
         returns (address[])
     {
         return all_accounts;
@@ -162,7 +175,7 @@ contract Authorization is ReservedAddress {
     /// @return true if passed, otherwise false
     function checkResource(address _account, address _cont, bytes4 _func)
         public
-        view
+        constant
         returns (bool)
     {
         address[] memory perms = queryPermissions(_account);
@@ -182,13 +195,10 @@ contract Authorization is ReservedAddress {
     /// @return true if passed, otherwise false
     function checkPermission(address _account, address _permission)
         public
-        view
+        constant
         returns (bool)
     {
-        if (sysConfig.getPermissionCheck()) {
-            return AddressArray.exist(_permission, permissions[_account]);
-        }
-        return true;
+        return AddressArray.exist(_permission, permissions[_account]);
     }
 
     /// @notice Private: Set the permission to the account
@@ -203,7 +213,7 @@ contract Authorization is ReservedAddress {
         if (!AddressArray.exist(_account, all_accounts))
             all_accounts.push(_account);
 
-        emit AuthSetted(_account, _permission);
+        AuthSetted(_account, _permission);
         return true;
     }
 }

@@ -1,52 +1,50 @@
-pragma solidity ^0.4.24;
-
-import "../common/model_type.sol";
+pragma solidity ^0.4.14;
 
 
 /// @title The interface of system config
 /// @author ["Cryptape Technologies <contact@cryptape.com>"]
 interface SysConfigInterface {
     /// @notice Update current chain name
-    function setChainName(string) external;
+    function setChainName(string) public;
 
     /// @notice Update current operator
-    function setOperator(string) external;
+    function setOperator(string) public;
 
     /// @notice Update current operator's website URL
-    function setWebsite(string) external;
+    function setWebsite(string) public;
 
     /// @notice Get delay block number before validate
-    function getDelayBlockNumber() external view returns (uint);
+    function getDelayBlockNumber() public constant returns (uint);
 
     /// @notice Whether check permission in the system or not, true represents check and false represents don't check.
-    function getPermissionCheck() external view returns (bool);
+    function getPermissionCheck() public constant returns (bool);
 
     /// @notice Whether check quota in the system or not, true represents check and false represents don't check.
-    function getQuotaCheck() external view returns (bool);
+    function getQuotaCheck() public constant returns (bool);
 
     /// @notice The name of current chain
-    function getChainName() external view returns (string);
+    function getChainName() public constant returns (string);
 
     /// @notice The id of current chain
-    function getChainId() external view returns (uint32);
+    function getChainId() public constant returns (uint32);
 
     /// @notice The operator of current chain
-    function getOperator() external view returns (string);
+    function getOperator() public constant returns (string);
 
     /// @notice Current operator's website URL
-    function getWebsite() external view returns (string);
+    function getWebsite() public constant returns (string);
 
     /// @notice The interval time for creating a block (milliseconds)
-    function getBlockInterval() external view returns (uint64);
+    function getBlockInterval() public constant returns (uint64);
 
     /// @notice The token information
-    function getTokenInfo() external view returns (string, string, string);
+    function getTokenInfo() public constant returns (string, string, string);
 }
 
 
 /// @title System config contract
 /// @author ["Cryptape Technologies <contact@cryptape.com>"]
-contract SysConfig is SysConfigInterface, EconomicalType{
+contract SysConfig is SysConfigInterface {
 
     /// @notice only chain_name, operator, website can be updated
     uint delayBlockNumber;
@@ -60,6 +58,8 @@ contract SysConfig is SysConfigInterface, EconomicalType{
     EconomicalModel economicalModel;
     TokenInfo tokenInfo;
 
+    enum EconomicalModel { Quota, Charge }
+
     struct TokenInfo {
         string name;
         string symbol;
@@ -67,7 +67,7 @@ contract SysConfig is SysConfigInterface, EconomicalType{
     }
 
     /// @notice Setup
-    constructor(
+    function SysConfig(
         uint _delayBlockNumber,
         bool _checkPermission,
         bool _checkQuota,
@@ -101,26 +101,26 @@ contract SysConfig is SysConfigInterface, EconomicalType{
     }
 
     function setOperator(string _operator)
-        external
+        public
     {
         operator = _operator;
     }
 
     function setWebsite(string _website)
-        external
+        public
     {
         website = _website;
     }
 
     function setChainName(string _chainName)
-        external
+        public
     {
         chainName = _chainName;
     }
 
     function getDelayBlockNumber()
         public
-        view
+        constant
         returns (uint)
     {
         return delayBlockNumber;
@@ -128,7 +128,7 @@ contract SysConfig is SysConfigInterface, EconomicalType{
 
     function getPermissionCheck()
         public
-        view
+        constant
         returns (bool)
     {
         return checkPermission && (economicalModel == EconomicalModel.Quota);
@@ -136,7 +136,7 @@ contract SysConfig is SysConfigInterface, EconomicalType{
 
     function getQuotaCheck()
         public
-        view
+        constant
         returns (bool)
     {
         return checkQuota && (economicalModel == EconomicalModel.Quota);
@@ -144,7 +144,7 @@ contract SysConfig is SysConfigInterface, EconomicalType{
 
     function getChainName()
         public
-        view
+        constant
         returns (string)
     {
         return chainName;
@@ -152,7 +152,7 @@ contract SysConfig is SysConfigInterface, EconomicalType{
 
     function getChainId()
         public
-        view
+        constant
         returns (uint32)
     {
         return chainId;
@@ -160,7 +160,7 @@ contract SysConfig is SysConfigInterface, EconomicalType{
 
     function getOperator()
         public
-        view
+        constant
         returns (string)
     {
         return operator;
@@ -168,7 +168,7 @@ contract SysConfig is SysConfigInterface, EconomicalType{
 
     function getWebsite()
         public
-        view
+        constant
         returns (string)
     {
         return website;
@@ -176,7 +176,7 @@ contract SysConfig is SysConfigInterface, EconomicalType{
 
     function getBlockInterval()
         public
-        view
+        constant
         returns (uint64)
     {
         return blockInterval;
@@ -184,7 +184,7 @@ contract SysConfig is SysConfigInterface, EconomicalType{
 
     function getEconomicalModel()
         public
-        view
+        constant
         returns (EconomicalModel)
     {
         return economicalModel;
@@ -192,7 +192,7 @@ contract SysConfig is SysConfigInterface, EconomicalType{
 
     function getTokenInfo()
         public
-        view
+        constant
         returns(string name, string symbol, string avatar)
     {
         name = tokenInfo.name;
