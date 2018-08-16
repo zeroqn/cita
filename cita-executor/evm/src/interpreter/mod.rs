@@ -902,7 +902,6 @@ impl InstructionInfo {
         match instruction {
             instructions::SWAPX => {
                 let position = stack.peek(0).low_u64() as usize;
-                trace!(target: "evm", "position: {} ", position);
                 position
             }
             instructions::DUPX => stack.peek(0).low_u64() as usize - 1,
