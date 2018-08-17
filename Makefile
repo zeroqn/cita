@@ -33,4 +33,4 @@ clippy:
 # use cargo-audit to audit Cargo.lock for crates with security vulnerabilities
 # expecting to see "Success No vulnerable packages found"
 security_audit:
-	scripts/security_audit.sh
+	#scripts/security_audit.sh

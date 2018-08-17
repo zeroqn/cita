@@ -8,20 +8,13 @@ PADDR="2e988a386a799f506693793c6a5af6b54dfaabfb"
 
 # Chain Manager Contract
 CMC_ADDR="ffffffffffffffffffffffffffffffffff020002"
-CMC="scripts/contracts/src/system/chain_manager.sol"
-CMC_ABI=
-
-# Base dir for import contract files
-CONTRACT_LIBS_DIR="scripts/contracts"
+CMC="scripts/contracts/system/chain_manager.sol"
 
 # Templates for some shell commands
-JSONRPC_CALL='{"jsonrpc":"2.0","method":"call", "params":[{"to":"%s", "data":"%s"}, "latest"],"id":2}'
-JSONRPC_BLOCKHEADER='{"jsonrpc":"2.0","method":"getBlockHeader","params":["0x%x"],"id":1}'
-JSONRPC_STATEPROOF='{"jsonrpc":"2.0","method":"getStateProof","params":["0x%s","0x%s","0x%x"],"id":1}'
+ETHCALL='{"jsonrpc":"2.0","method":"call", "params":[{"to":"%s", "data":"%s"}, "latest"],"id":2}'
 
 # Test contract file
 CONTRACT_DEMO="scripts/contracts/tests/contracts/cross_chain_token.sol"
-DEMO_ABI=
 
 # Global variables which are set in functions
 MAIN_CONTRACT_ADDR=
@@ -60,18 +53,6 @@ function func_encode () {
         "keccak = sha3.keccak_256()" \
         "keccak.update('${func}'.encode('utf-8'))" \
         "print(keccak.hexdigest()[0:8])"
-}
-
-function map_key_encode () {
-    local key="$1"
-    local position="$2"
-    python_run \
-        "import sha3" \
-        "import binascii" \
-        "keccak = sha3.keccak_256()" \
-        "keccak.update(binascii.unhexlify('${key}'))" \
-        "keccak.update(binascii.unhexlify('${position}'))" \
-        "print(keccak.hexdigest()[0:64])"
 }
 
 function abi_encode () {
@@ -115,7 +96,7 @@ function start_chain () {
         bin/cita setup ${chain}chain/${id} && true
     done
     for ((id=0;id<${size};id++)); do
-        bin/cita start ${chain}chain/${id} trace>/dev/null 2>&1 &
+        bin/cita start ${chain}chain/${id} >/dev/null 2>&1 &
     done
 }
 
@@ -146,8 +127,7 @@ function deploy_contract () {
     local chain="$1"
     local solfile="$2"
     local extra="$3"
-    local code="$(solc --allow-paths "$(pwd)/${CONTRACT_LIBS_DIR}" \
-        --bin "${solfile}" 2>/dev/null | tail -1)${extra}"
+    local code="$(solc --bin "${solfile}" 2>/dev/null | tail -1)${extra}"
     txtool_run ${chain} make_tx.py --privkey "${PKEY}" --code "${code}"
     txtool_run ${chain} send_tx.py
     txtool_run ${chain} get_receipt.py --forever true
@@ -179,45 +159,9 @@ function call_contract () {
             exit 1
             ;;
     esac
-    curl -s -X POST -d "$(printf "${JSONRPC_CALL}" "0x${addr}" "0x${code}")" \
+    curl -s -X POST -d "$(printf "${ETHCALL}" "0x${addr}" "0x${code}")" \
         127.0.0.1:${port} \
         | json_get .result | xargs -I {} echo {}
-}
-
-function get_block_header () {
-    local chain="$1"
-    local height="$2"
-    case ${chain} in
-        main)
-            port=11337;;
-        side)
-            port=21337;;
-        ?)
-            exit 1
-            ;;
-    esac
-    curl -s -X POST -d "$(printf "${JSONRPC_BLOCKHEADER}" "${height}")" \
-        127.0.0.1:${port} \
-        | json_get .result | xargs -I {} echo {}
-}
-
-function get_state_proof () {
-    local chain="$1"
-    local address="$2"
-    local key="$3"
-    local height="$4"
-    case ${chain} in
-        main)
-            port=11337;;
-        side)
-            port=21337;;
-        ?)
-            exit 1
-            ;;
-    esac
-    curl -s -X POST -d "$(printf "${JSONRPC_STATEPROOF}" "${address}" "${key}" "${height}")" \
-        127.0.0.1:${port} \
-        | json_get .result | cut -c 3-
 }
 
 function get_addr () {
@@ -230,13 +174,6 @@ function get_tx () {
     local chain="$1"
     txtool_run ${chain} get_receipt.py --forever true \
         | json_get .transactionHash | cut -c 3-
-}
-
-function get_tx_block_number () {
-    local chain="$1"
-    local txhash="$2"
-    txtool_run ${chain} get_receipt.py --tx=${txhash} --forever true \
-        | json_get .blockNumber
 }
 
 function hex2dec () {
@@ -288,8 +225,6 @@ function test_demo_contract () {
     local main_tokens=50000
     local side_tokens=30000
     local crosschain_tokens=1234
-    local crosschain_tokens_bytes=$( \
-        printf "binascii.unhexlify('%064x')" ${crosschain_tokens})
 
     echo "main_chain_id=[${main_chain_id}]"
     echo "side_chain_id=[${side_chain_id}]"
@@ -325,7 +260,7 @@ function test_demo_contract () {
     echo "Demo contract for side at [${SIDE_CONTRACT_ADDR}]."
 
     title "Check from_chain_id for both chains."
-    code="$(func_encode "getFromChainId()")"
+    code="$(func_encode "get_from_chain_id()")"
     assert_equal "${main_chain_id}" \
         "$(hex2dec $(call_demo_for_main "${code}"))" \
         "The from_chain_id is not right for main chain."
@@ -335,7 +270,7 @@ function test_demo_contract () {
 
     title "Check tokens for both chains."
     data=$(printf "%64s" "${PADDR}" | tr ' ' '0')
-    code="$(func_encode 'getBalance(address)')${data}"
+    code="$(func_encode 'get_balance(address)')${data}"
     assert_equal ${main_tokens} \
         "$(hex2dec $(call_demo_for_main "${code}"))" \
         "The tokens is not right for main chain."
@@ -344,13 +279,12 @@ function test_demo_contract () {
         "The tokens is not right for side chain."
 
     title "Send tokens from main chain."
-    DEMO_ABI=$(solc --allow-paths "$(pwd)/${CONTRACT_LIBS_DIR}" \
-            --combined-json abi ${CONTRACT_DEMO} \
+    local demo_abi=$(solc --combined-json abi ${CONTRACT_DEMO} \
         | sed "s@${CONTRACT_DEMO}:@@g" \
         | json_get '.contracts.MyToken.abi')
-    send_contract main "${MAIN_CONTRACT_ADDR}" "${DEMO_ABI}" \
-        "sendToSideChain" \
-        "${side_chain_id}, '${SIDE_CONTRACT_ADDR}', ${crosschain_tokens_bytes}"
+    send_contract main "${MAIN_CONTRACT_ADDR}" "${demo_abi}" \
+        "send_to_side_chain" \
+        "${side_chain_id}, '${SIDE_CONTRACT_ADDR}', ${crosschain_tokens}"
     local maintx=$(get_tx main)
 
     title "Waiting for proof."
@@ -391,74 +325,15 @@ EOF
     title "Waiting for receipt for ${sidetx}."
     txtool_run side get_receipt.py --tx=${sidetx} --forever true
 
-    local tx_block_number=$(hex2dec $(get_tx_block_number side ${sidetx}))
-    title "Got tx_block_number ${tx_block_number}"
-    # 3 is position of balanceOf in contract scripts/contracts/tests/contracts/cross_chain_token.sol
-    local state_proof=$(get_state_proof side ${SIDE_CONTRACT_ADDR} $(map_key_encode "000000000000000000000000${PADDR}" "0000000000000000000000000000000000000000000000000000000000000003") ${tx_block_number})
-    title "Got state_proof ${state_proof}"
-
     title "Check balance for both chains after crosschain transaction."
     data=$(printf "%64s" "${PADDR}" | tr ' ' '0')
-    code="$(func_encode 'getBalance(address)')${data}"
+    code="$(func_encode 'get_balance(address)')${data}"
     assert_equal $((main_tokens-crosschain_tokens)) \
         "$(hex2dec $(call_demo_for_main "${code}"))" \
         "The balance is not right for main chain."
     assert_equal $((side_tokens+crosschain_tokens)) \
         "$(hex2dec $(call_demo_for_side "${code}"))" \
         "The balance is not right for side chain."
-
-    title "Check sync block header number."
-    local data=$(printf "%064x" "${side_chain_id}")
-    code="$(func_encode 'getExpectedBlockNumber(uint32)')${data}"
-    assert_equal 0 \
-        "$(hex2dec $(call_contract main "${CMC_ADDR}" "${code}"))" \
-        "The block number of side chain in main chain is wrong."
-
-    title "Get side chain block header bytes."
-    local side_header_0=$(get_block_header side 0 | cut -c 3-)
-    local side_header_1=$(get_block_header side 1 | cut -c 3-)
-    local side_header_2=$(get_block_header side 2 | cut -c 3-)
-    local side_header_3=$(get_block_header side 3 | cut -c 3-)
-    local main_header_3=$(get_block_header main 3 | cut -c 3-)
-
-    title "Sync side chain block header bytes to main chain."
-    send_contract main "${CMC_ADDR}" "${CMC_ABI}" "verifyBlockHeader" \
-        "${side_chain_id}, binascii.unhexlify('${side_header_0}')"
-    send_contract main "${CMC_ADDR}" "${CMC_ABI}" "verifyBlockHeader" \
-        "${side_chain_id}, binascii.unhexlify('${side_header_1}')"
-    send_contract main "${CMC_ADDR}" "${CMC_ABI}" "verifyBlockHeader" \
-        "${side_chain_id}, binascii.unhexlify('${side_header_3}')"
-    send_contract main "${CMC_ADDR}" "${CMC_ABI}" "verifyBlockHeader" \
-        "${side_chain_id}, binascii.unhexlify('${side_header_2}')"
-    send_contract main "${CMC_ADDR}" "${CMC_ABI}" "verifyBlockHeader" \
-        "${side_chain_id}, binascii.unhexlify('${main_header_3}')"
-
-    title "Check sync block header number after sync."
-    local data=$(printf "%064x" "${side_chain_id}")
-    code="$(func_encode 'getExpectedBlockNumber(uint32)')${data}"
-    assert_equal 3 \
-        "$(hex2dec $(call_contract main "${CMC_ADDR}" "${code}"))" \
-        "The block number of side chain in main chain is wrong."
-
-    local max_block_number=$[tx_block_number+1]
-    title "Relay block header until ${max_block_number}."
-    for ((i=3;i<=${max_block_number};i++))
-    do
-        local side_header=$(get_block_header side ${i} | cut -c 3-)
-        send_contract main "${CMC_ADDR}" "${CMC_ABI}" "verifyBlockHeader" \
-            "${side_chain_id}, binascii.unhexlify('${side_header}')"
-    done
-
-    title "verify state proof"
-    # 96 is offset of state proof in call args
-    data=$(printf "%064x%064x%064x%064x" "${side_chain_id}" "${tx_block_number}" "96" "$[${#state_proof}/2]")
-    code="$(func_encode 'verifyState(uint32,uint64,bytes)')${data}${state_proof}"
-    local result=$(call_contract main "${CMC_ADDR}" "${code}")
-    title "verify result ${result}"
-    # result has 0x prefix
-    assert_equal $((side_tokens+crosschain_tokens)) \
-        "$(hex2dec "0x${result:130:194}")" \
-        "The balance is not right for state proof."
 }
 
 function main () {
@@ -504,15 +379,14 @@ function main () {
             "ChainManager.parentChainId=${main_chain_id}" \
             "ChainManager.parentChainAuthorities=${main_auths}"
 
-    wait_chain_for_height main 3
+    wait_chain_for_height main 5
 
     title "Register side chain ..."
-    CMC_ABI=$(solc --allow-paths "$(pwd)/${CONTRACT_LIBS_DIR}" \
-        --combined-json abi ${CMC} 2>/dev/null \
+    local cmc_abi=$(solc --combined-json abi ${CMC} 2>/dev/null \
         | sed "s@${CMC}:@@g" \
         | json_get '.contracts.ChainManager.abi')
 
-    send_contract main "${CMC_ADDR}" "${CMC_ABI}" \
+    send_contract main "${CMC_ADDR}" "${cmc_abi}" \
         "newSideChain" "${side_chain_id}, [${side_auths}]"
 
     title "Create side chain configs ..."
@@ -527,7 +401,7 @@ function main () {
     start_chain side 4
 
     title "Enable side chain ..."
-    send_contract main "${CMC_ADDR}" "${CMC_ABI}" \
+    send_contract main "${CMC_ADDR}" "${cmc_abi}" \
         "enableSideChain" "${side_chain_id}"
 
     title "Test the demo contract ..."
