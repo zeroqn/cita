@@ -27,7 +27,7 @@ use core::libchain::chain;
 use db;
 use journaldb;
 use libexecutor::block::{Block, BlockBody};
-use libexecutor::executor::{Config, Executor};
+use libexecutor::executor::{Config, Executor, SpecBuiltins};
 use libexecutor::genesis::Genesis;
 use libexecutor::genesis::Spec;
 use libproto::blockchain;
@@ -49,6 +49,7 @@ use util::KeyValueDB;
 
 const EXECUTOR_CONFIG: &str = "executor.toml";
 const CHAIN_CONFIG: &str = "chain.toml";
+const SPEC_BUILTINS_CONFIG: &str = "spec_builtins.toml";
 const SCRIPTS_DIR: &str = "../../scripts";
 pub fn get_temp_state() -> State<StateDB> {
     let journal_db = get_temp_state_db();
@@ -175,10 +176,12 @@ pub fn init_executor(contract_arguments: Vec<(&str, &str)>) -> Arc<Executor> {
     };
 
     let executor_config = Config::new(EXECUTOR_CONFIG);
+    let spec_builtins = SpecBuiltins::parse_from_toml(SPEC_BUILTINS_CONFIG);
     Arc::new(Executor::init_executor(
         Arc::new(db),
         genesis,
         &executor_config,
+        spec_builtins,
     ))
 }
 

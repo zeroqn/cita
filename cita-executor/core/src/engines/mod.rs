@@ -23,6 +23,7 @@ use spec::Builtin as SpecBuiltin;
 use std::collections::BTreeMap;
 use std::str::FromStr;
 use types::reserved_addresses;
+use libexecutor::executor::SpecBuiltins;
 
 mod null_engine;
 pub use self::null_engine::NullEngine;
@@ -48,12 +49,25 @@ pub trait Engine: Sync + Send {
     }
 }
 
+impl SpecBuiltin {
+    pub fn reserved_address(&self) -> &'static str {
+        match self.name.as_str() {
+            "ecrecover" => reserved_addresses::ECRECOVER_ADDRESS,
+            "sha256" => reserved_addresses::SHA256_ADDRESS,
+            "ripemd160" => reserved_addresses::RIPEMD160_ADDRESS,
+            "identity" => reserved_addresses::IDENTITY_ADDRESS,
+            "edrecover" => reserved_addresses::EDRECOVER_ADDRESS,
+            _ => panic!("none-reserved address"),
+        }
+    }
+}
+
 impl NullEngine {
     // TODO: read from spec file
     pub fn cita() -> Self {
         let mut builtins = BTreeMap::new();
 
-        let s = r#"{ "name": "ecrecover", "pricing": { "linear": { "base": 3000, "word": 0 } } }"#;
+        let s = r#"{ "name": "ecrecover", "pricing": { "mode": "linear", "base": 3000, "word": 0 } }"#;
         let deserialized: SpecBuiltin = serde_json::from_str(s).unwrap();
 
         builtins.insert(
@@ -61,33 +75,44 @@ impl NullEngine {
             Builtin::from(deserialized),
         );
 
-        let s = r#"{ "name": "sha256", "pricing": { "linear": { "base": 60, "word": 12 } } }"#;
+        let s = r#"{ "name": "sha256", "pricing": { "mode": "linear", "base": 60, "word": 12 } }"#;
         let deserialized: SpecBuiltin = serde_json::from_str(s).unwrap();
         builtins.insert(
             Address::from_str(reserved_addresses::SHA256_ADDRESS).unwrap(),
             Builtin::from(deserialized),
         );
 
-        let s = r#"{ "name": "ripemd160", "pricing": { "linear": { "base": 600, "word": 120 } } }"#;
+        let s = r#"{ "name": "ripemd160", "pricing": { "mode": "linear", "base": 600, "word": 120 } }"#;
         let deserialized: SpecBuiltin = serde_json::from_str(s).unwrap();
         builtins.insert(
             Address::from_str(reserved_addresses::RIPEMD160_ADDRESS).unwrap(),
             Builtin::from(deserialized),
         );
 
-        let s = r#"{ "name": "identity", "pricing": { "linear": { "base": 15, "word": 3 } } }"#;
+        let s = r#"{ "name": "identity", "pricing": { "mode": "linear", "base": 15, "word": 3 } }"#;
         let deserialized: SpecBuiltin = serde_json::from_str(s).unwrap();
         builtins.insert(
             Address::from_str(reserved_addresses::IDENTITY_ADDRESS).unwrap(),
             Builtin::from(deserialized),
         );
 
-        let s = r#"{ "name": "edrecover", "pricing": { "linear": { "base": 3000, "word": 0 } } }"#;
+        let s = r#"{ "name": "edrecover", "pricing": { "mode": "linear", "base": 3000, "word": 0 } }"#;
         let deserialized: SpecBuiltin = serde_json::from_str(s).unwrap();
         builtins.insert(
             Address::from_str(reserved_addresses::EDRECOVER_ADDRESS).unwrap(),
             Builtin::from(deserialized),
         );
+
+        Self::new(builtins)
+    }
+
+    pub fn cita_with_spec_builtins(spec_builtins: SpecBuiltins) -> NullEngine {
+        let builtins = spec_builtins.into_iter()
+            .map(|spec_builtin| (
+                Address::from_str(spec_builtin.reserved_address()).unwrap(),
+                Builtin::from(spec_builtin))
+            )
+            .collect::<BTreeMap<_, _>>();
 
         Self::new(builtins)
     }
@@ -100,25 +125,41 @@ mod test {
     use super::*;
     use util::BytesRef;
 
+    macro_rules! assert_sha256 {
+        ($cita: expr) => ((            
+            let sha256 = $cita.builtin(
+                &Address::from(0x0000000000000000000000000000000000000002),
+                0,
+                );
+
+            assert!(sha256.is_some());
+
+            let f = sha256.unwrap();
+            let i = [0u8; 0];
+            let mut o = [255u8; 32];
+            f.execute(&i[..], &mut BytesRef::Fixed(&mut o[..]));
+            assert_eq!(
+                &o[..],
+                &(FromHex::from_hex(
+                        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                ).unwrap())[..]
+            );
+        ))
+    }
+
     #[test]
     fn test_cita_correct() {
-        let cita = NullEngine::cita();
-        let sha256 = cita.builtin(
-            &Address::from(0x0000000000000000000000000000000000000002),
-            0,
-        );
+        assert_sha256!(NullEngine::cita());
+    }
 
-        assert!(sha256.is_some());
+    #[test]
+    fn test_from_toml_correct() {
+        use ::tests::helpers::BUILTINS_CONFIG;
 
-        let f = sha256.unwrap();
-        let i = [0u8; 0];
-        let mut o = [255u8; 32];
-        f.execute(&i[..], &mut BytesRef::Fixed(&mut o[..]));
-        assert_eq!(
-            &o[..],
-            &(FromHex::from_hex(
-                "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-            ).unwrap())[..]
-        );
+        let spec_builtins = super::SpecBuiltins::parse_from_toml(BUILTINS_CONFIG);
+
+        let cita = NullEngine::cita_with_spec_builtins(spec_builtins);
+
+        assert_sha256!(cita);
     }
 }

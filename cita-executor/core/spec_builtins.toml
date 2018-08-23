@@ -1,0 +1,34 @@
+[[builtins]]
+name = "ecrecover"
+[builtins.pricing]
+mode = "linear"
+base = 3000
+word = 0
+
+[[builtins]]
+name = "sha256"
+[builtins.pricing]
+mode = "linear"
+base = 60
+word = 12
+
+[[builtins]]
+name = "ripemd160"
+[builtins.pricing]
+mode = "linear"
+base = 600
+word = 120
+
+[[builtins]]
+name = "identity"
+[builtins.pricing]
+mode = "linear"
+base = 15
+word = 3
+
+[[builtins]]
+name = "edrecover"
+[builtins.pricing]
+mode = "linear"
+base = 3000
+word = 0
