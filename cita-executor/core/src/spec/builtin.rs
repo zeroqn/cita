@@ -34,6 +34,7 @@ pub struct Modexp {
 
 /// Pricing variants.
 #[derive(Debug, PartialEq, Deserialize, Clone)]
+#[serde(tag = "mode")]
 pub enum Pricing {
     /// Linear pricing.
     #[serde(rename = "linear")]
@@ -60,7 +61,7 @@ mod tests {
     fn builtin_deserialization() {
         let s = r#"{
             "name": "ecrecover",
-            "pricing": { "linear": { "base": 3000, "word": 0 } }
+            "pricing": { "mode": "linear", "base": 3000, "word": 0 }
         }"#;
         let deserialized: Builtin = serde_json::from_str(s).unwrap();
         assert_eq!(deserialized.name, "ecrecover");
@@ -79,7 +80,7 @@ mod tests {
         let s = r#"{
             "name": "late_start",
             "activate_at": 66666,
-            "pricing": { "linear": { "base": 3000, "word": 0 } }
+            "pricing": { "mode": "linear",  "base": 3000, "word": 0 }
         }"#;
 
         let deserialized: Builtin = serde_json::from_str(s).unwrap();
@@ -92,5 +93,27 @@ mod tests {
             })
         );
         assert_eq!(deserialized.activate_at, Some(66666));
+    }
+
+    #[test]
+    fn builtin_toml_deserialization() {
+        let s = r#"
+            [[builtins]]
+            name = "ecrecover"
+            [builtins.pricing]
+            mode = "linear"
+            base = 3000
+            word = 0
+        "#;
+        
+        let deserialized: Builtin = ::toml::from_str(s).unwrap();
+        assert_eq!(deserialized.name, "ecrecover");
+        assert!(
+            deserialized.pricing,
+            Pricing::Linear(Linear {
+                base: 3000,
+                word: 0
+            })
+        );
     }
 }

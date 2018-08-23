@@ -126,11 +126,14 @@ fn main() {
         .about("CITA Block Chain Node powered by Rust")
         .arg_from_usage("-g, --genesis=[FILE] 'Sets a genesis config file")
         .arg_from_usage("-c, --config=[FILE] 'Sets a switch config file'")
+        .arg_from_usage("-b, --builtins=[FILE] 'Sets a spec builtin config file'")
         .get_matches();
 
     let genesis_path = matches.value_of("genesis").unwrap_or("genesis.json");
 
     let config_path = matches.value_of("config").unwrap_or("executor.toml");
+
+    let spec_builtins_path = matches.value_of("builtins").unwrap_or("spec_builtins.toml");
 
     let (tx, rx) = channel();
     let (ctx_pub, crx_pub) = channel();
@@ -153,8 +156,9 @@ fn main() {
         crx_pub,
     );
 
-    let ext_instance =
-        ExecutorInstance::new(ctx_pub.clone(), write_sender, config_path, genesis_path);
+    let ext_instance = ExecutorInstance::new(
+        ctx_pub.clone(), write_sender, config_path, genesis_path, spec_builtins_path
+    );
     let mut distribute_ext = ext_instance.clone();
 
     thread::spawn(move || loop {

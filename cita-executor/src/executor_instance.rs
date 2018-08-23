@@ -20,7 +20,7 @@ use core::contracts::solc::sys_config::SysConfig;
 use core::db;
 use core::libexecutor::block::{Block, ClosedBlock};
 use core::libexecutor::call_request::CallRequest;
-use core::libexecutor::executor::{BlockInQueue, Config, Executor, Stage};
+use core::libexecutor::executor::{BlockInQueue, Config, Executor, Stage, SpecBuiltins};
 use core::libexecutor::Genesis;
 use error::ErrorCode;
 use jsonrpc_types::rpctypes::{BlockNumber, BlockTag, CountOrCode, EconomicalModel, MetaData};
@@ -69,6 +69,7 @@ impl ExecutorInstance {
         write_sender: Sender<u64>,
         config_path: &str,
         genesis_path: &str,
+        spec_builtins_path: &str,
     ) -> Self {
         let config = DatabaseConfig::with_columns(db::NUM_COLUMNS);
         let nosql_path = DataPath::root_node_path() + "/statedb";
@@ -78,7 +79,8 @@ impl ExecutorInstance {
 
         let executor_config = Config::new(config_path);
         let grpc_port = executor_config.grpc_port;
-        let executor = Executor::init_executor(Arc::new(db), genesis, &executor_config);
+        let spec_builtins = SpecBuiltins::parse_from_toml(spec_builtins_path);
+        let executor = Executor::init_executor(Arc::new(db), genesis, &executor_config, spec_builtins);
         let executor = Arc::new(executor);
         executor.set_gas_and_nodes(executor.get_max_height());
         executor.send_executed_info_to_chain(executor.get_max_height(), &ctx_pub);

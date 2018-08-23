@@ -89,6 +89,27 @@ impl Config {
     }
 }
 
+#[derive(Deserialize)]
+pub struct SpecBuiltins {
+    builtins: Vec<::spec::Builtin>,
+}
+
+impl IntoIterator for SpecBuiltins {
+    type Item = ::spec::Builtin;
+    type IntoIter = ::std::vec::IntoIter<::spec::Builtin>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.builtins.into_iter()
+    }
+}
+
+impl SpecBuiltins {
+    pub fn parse_from_toml(path: &str) -> SpecBuiltins {
+        trace!("parse spec builtin config: {}", path);
+        parse_config!(SpecBuiltins, path)
+    }
+}
+
 impl BloomGroupDatabase for Executor {
     fn blooms_at(&self, position: &GroupPosition) -> Option<BloomGroup> {
         let position = LogGroupPosition::from(position.clone());
@@ -263,6 +284,7 @@ impl Executor {
         db: Arc<KeyValueDB>,
         mut genesis: Genesis,
         executor_config: &Config,
+        spec_builtins: SpecBuiltins,
     ) -> Executor {
         info!("executor config: {:?}", executor_config);
 
@@ -319,7 +341,7 @@ impl Executor {
             sys_configs: RwLock::new(VecDeque::new()),
             economical_model: RwLock::new(EconomicalModel::Quota),
             black_list_cache: RwLock::new(LRUCache::new(10_000_000)),
-            engine: Box::new(NullEngine::cita()),
+            engine: Box::new(NullEngine::cita_with_spec_builtins(spec_builtins)),
             emergency_brake: AtomicBool::new(false),
             chain_version: AtomicUsize::new(1),
         };
