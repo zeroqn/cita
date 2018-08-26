@@ -17,7 +17,7 @@
 
 //! Chain manager.
 
-use super::encode_contract_name;
+use super::calc_func_sig;
 use cita_types::{Address, H160, H256, U256};
 use ethabi::{decode, ParamType};
 use evm::call_type::CallType;
@@ -29,8 +29,8 @@ const CHAIN_ID: &[u8] = &*b"getChainId()";
 const AUTHORITIES: &[u8] = &*b"getAuthorities(uint32)";
 
 lazy_static! {
-    static ref CHAIN_ID_ENCODED: Vec<u8> = encode_contract_name(CHAIN_ID);
-    static ref AUTHORITIES_ENCODED: Vec<u8> = encode_contract_name(AUTHORITIES);
+    static ref CHAIN_ID_ENCODED: Vec<u8> = calc_func_sig(CHAIN_ID);
+    static ref AUTHORITIES_ENCODED: Vec<u8> = calc_func_sig(AUTHORITIES);
     static ref CONTRACT_ADDRESS: H160 = H160::from_str(reserved_addresses::CHAIN_MANAGER).unwrap();
 }
 

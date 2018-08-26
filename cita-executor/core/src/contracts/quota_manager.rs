@@ -18,7 +18,7 @@
 //! Quota manager.
 
 use super::ContractCallExt;
-use super::{encode_contract_name, to_address_vec, to_u256, to_u256_vec};
+use super::{calc_func_sig, to_address_vec, to_u256, to_u256_vec};
 use cita_types::traits::LowerHex;
 use cita_types::{Address, H160};
 use libexecutor::executor::Executor;
@@ -33,10 +33,10 @@ const BQL: &[u8] = &*b"getBQL()";
 const DEFAULT_AQL: &[u8] = &*b"getDefaultAQL()";
 
 lazy_static! {
-    static ref QUOTAS_HASH: Vec<u8> = encode_contract_name(QUOTAS);
-    static ref ACCOUNTS_HASH: Vec<u8> = encode_contract_name(ACCOUNTS);
-    static ref BQL_HASH: Vec<u8> = encode_contract_name(BQL);
-    static ref DEFAULT_AQL_HASH: Vec<u8> = encode_contract_name(DEFAULT_AQL);
+    static ref QUOTAS_HASH: Vec<u8> = calc_func_sig(QUOTAS);
+    static ref ACCOUNTS_HASH: Vec<u8> = calc_func_sig(ACCOUNTS);
+    static ref BQL_HASH: Vec<u8> = calc_func_sig(BQL);
+    static ref DEFAULT_AQL_HASH: Vec<u8> = calc_func_sig(DEFAULT_AQL);
     static ref CONTRACT_ADDRESS: H160 = H160::from_str(reserved_addresses::QUOTA_MANAGER).unwrap();
 }
 

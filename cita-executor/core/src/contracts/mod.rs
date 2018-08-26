@@ -75,7 +75,7 @@ impl ContractCallExt for Executor {
 }
 
 // Should move to project top-level for code reuse.
-pub fn encode_contract_name(method_name: &[u8]) -> Vec<u8> {
+pub fn calc_func_sig(method_name: &[u8]) -> Vec<u8> {
     sha3::keccak256(method_name)[0..4].to_vec()
 }
 
@@ -156,7 +156,7 @@ fn to_resource_vec(output: &[u8]) -> Vec<Resource> {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn encode_contract_name() {
+    fn calc_func_sig() {
         let testdata = vec![
             ("thisIsAMethodName(uint256)", vec![0xa8, 0x67, 0x12, 0xe7]),
             ("aMethodNameAgain(bool)", vec![0xa1, 0xbe, 0xa0, 0xac]),
@@ -167,7 +167,7 @@ mod tests {
             ("thisIsAMethodNameToo(bytes)", vec![0x87, 0x46, 0x79, 0xca]),
         ];
         for (data, expected) in testdata.into_iter() {
-            assert_eq!(super::encode_contract_name(data.as_ref()), expected);
+            assert_eq!(super::calc_func_sig(data.as_ref()), expected);
         }
     }
 }

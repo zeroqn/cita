@@ -18,7 +18,7 @@
 //! Node manager.
 
 use super::ContractCallExt;
-use super::{encode_contract_name, to_address_vec, to_u256_vec};
+use super::{calc_func_sig, to_address_vec, to_u256_vec};
 use cita_types::{Address, H160};
 use largest_remainder_method::apportion;
 use libexecutor::executor::{EconomicalModel, Executor};
@@ -34,8 +34,8 @@ const LIST_STAKE: &[u8] = &*b"listStake()";
 const EPOCH: u64 = 1000;
 
 lazy_static! {
-    static ref LIST_NODE_ENCODED: Vec<u8> = encode_contract_name(LIST_NODE);
-    static ref LIST_STAKE_ENCODED: Vec<u8> = encode_contract_name(LIST_STAKE);
+    static ref LIST_NODE_ENCODED: Vec<u8> = calc_func_sig(LIST_NODE);
+    static ref LIST_STAKE_ENCODED: Vec<u8> = calc_func_sig(LIST_STAKE);
     static ref CONTRACT_ADDRESS: H160 = H160::from_str(reserved_addresses::NODE_MANAGER).unwrap();
 }
 

@@ -17,7 +17,7 @@
 //! Permission management.
 
 use super::ContractCallExt;
-use super::{encode_contract_name, to_address_vec, to_resource_vec};
+use super::{calc_func_sig, to_address_vec, to_resource_vec};
 use cita_types::{Address, H160, H256};
 use libexecutor::executor::Executor;
 use std::collections::HashMap;
@@ -29,9 +29,9 @@ const PERMISSIONS: &[u8] = &*b"queryPermissions(address)";
 const RESOURCES: &[u8] = &*b"queryResource()";
 
 lazy_static! {
-    static ref ALLACCOUNTS_HASH: Vec<u8> = encode_contract_name(ALLACCOUNTS);
-    static ref PERMISSIONS_HASH: Vec<u8> = encode_contract_name(PERMISSIONS);
-    static ref RESOURCES_HASH: Vec<u8> = encode_contract_name(RESOURCES);
+    static ref ALLACCOUNTS_HASH: Vec<u8> = calc_func_sig(ALLACCOUNTS);
+    static ref PERMISSIONS_HASH: Vec<u8> = calc_func_sig(PERMISSIONS);
+    static ref RESOURCES_HASH: Vec<u8> = calc_func_sig(RESOURCES);
     static ref CONTRACT_ADDRESS: H160 = H160::from_str(reserved_addresses::AUTHORIZATION).unwrap();
 }
 
@@ -146,7 +146,7 @@ mod tests {
     extern crate mktemp;
 
     use super::contains_resource;
-    use super::{encode_contract_name, PermissionManagement, Resource};
+    use super::{calc_func_sig, PermissionManagement, Resource};
     use cita_types::{Address, H160, H256};
     use std::collections::HashMap;
     use std::str::FromStr;
@@ -188,7 +188,7 @@ mod tests {
         let mut permission_resources: HashMap<Address, Vec<Resource>> = HashMap::new();
         let addr1 = Address::from(0x111);
         let addr2 = Address::from(0x222);
-        let mut func = encode_contract_name(ADD_RESOURCES);
+        let mut func = calc_func_sig(ADD_RESOURCES);
         let resources = vec![
             Resource {
                 cont: Address::from_str(reserved_addresses::PERMISSION_MANAGEMENT).unwrap(),
@@ -299,7 +299,7 @@ mod tests {
             resources,
             vec![Resource {
                 cont: Address::from_str(reserved_addresses::PERMISSION_MANAGEMENT).unwrap(),
-                func: encode_contract_name(NEW_PERMISSION),
+                func: calc_func_sig(NEW_PERMISSION),
             }]
         );
     }
@@ -330,107 +330,107 @@ mod tests {
             // newPermission
             Resource {
                 cont: Address::from_str(reserved_addresses::PERMISSION_MANAGEMENT).unwrap(),
-                func: encode_contract_name(NEW_PERMISSION),
+                func: calc_func_sig(NEW_PERMISSION),
             },
             // deletePermission
             Resource {
                 cont: Address::from_str(reserved_addresses::PERMISSION_MANAGEMENT).unwrap(),
-                func: encode_contract_name(DELETE_PERMISSION),
+                func: calc_func_sig(DELETE_PERMISSION),
             },
             // updatePermission
             Resource {
                 cont: Address::from_str(reserved_addresses::PERMISSION_MANAGEMENT).unwrap(),
-                func: encode_contract_name(ADD_RESOURCES),
+                func: calc_func_sig(ADD_RESOURCES),
             },
             Resource {
                 cont: Address::from_str(reserved_addresses::PERMISSION_MANAGEMENT).unwrap(),
-                func: encode_contract_name(DELETE_RESOURCES),
+                func: calc_func_sig(DELETE_RESOURCES),
             },
             Resource {
                 cont: Address::from_str(reserved_addresses::PERMISSION_MANAGEMENT).unwrap(),
-                func: encode_contract_name(UPDATE_PERMISSIONNAME),
+                func: calc_func_sig(UPDATE_PERMISSIONNAME),
             },
             // setAuth
             Resource {
                 cont: Address::from_str(reserved_addresses::PERMISSION_MANAGEMENT).unwrap(),
-                func: encode_contract_name(SET_AUTHORIZATION),
+                func: calc_func_sig(SET_AUTHORIZATION),
             },
             Resource {
                 cont: Address::from_str(reserved_addresses::PERMISSION_MANAGEMENT).unwrap(),
-                func: encode_contract_name(SET_AUTHORIZATIONS),
+                func: calc_func_sig(SET_AUTHORIZATIONS),
             },
             // cancelAuth
             Resource {
                 cont: Address::from_str(reserved_addresses::PERMISSION_MANAGEMENT).unwrap(),
-                func: encode_contract_name(CANCEL_AUTHORIZATION),
+                func: calc_func_sig(CANCEL_AUTHORIZATION),
             },
             Resource {
                 cont: Address::from_str(reserved_addresses::PERMISSION_MANAGEMENT).unwrap(),
-                func: encode_contract_name(CLEAR_AUTHORIZATION),
+                func: calc_func_sig(CLEAR_AUTHORIZATION),
             },
             Resource {
                 cont: Address::from_str(reserved_addresses::PERMISSION_MANAGEMENT).unwrap(),
-                func: encode_contract_name(CANCEL_AUTHORIZATIONS),
+                func: calc_func_sig(CANCEL_AUTHORIZATIONS),
             },
             // newRole
             Resource {
                 cont: H160::from_str(reserved_addresses::ROLE_MANAGEMENT).unwrap(),
-                func: encode_contract_name(NEW_ROLE),
+                func: calc_func_sig(NEW_ROLE),
             },
             // deleteRole
             Resource {
                 cont: H160::from_str(reserved_addresses::ROLE_MANAGEMENT).unwrap(),
-                func: encode_contract_name(DELETE_ROLE),
+                func: calc_func_sig(DELETE_ROLE),
             },
             // updateRole
             Resource {
                 cont: H160::from_str(reserved_addresses::ROLE_MANAGEMENT).unwrap(),
-                func: encode_contract_name(ADD_PERMISSIONS),
+                func: calc_func_sig(ADD_PERMISSIONS),
             },
             Resource {
                 cont: H160::from_str(reserved_addresses::ROLE_MANAGEMENT).unwrap(),
-                func: encode_contract_name(DELETE_PERMISSIONS),
+                func: calc_func_sig(DELETE_PERMISSIONS),
             },
             Resource {
                 cont: H160::from_str(reserved_addresses::ROLE_MANAGEMENT).unwrap(),
-                func: encode_contract_name(UPDATE_ROLENAME),
+                func: calc_func_sig(UPDATE_ROLENAME),
             },
             // setRole
             Resource {
                 cont: H160::from_str(reserved_addresses::ROLE_MANAGEMENT).unwrap(),
-                func: encode_contract_name(SET_ROLE),
+                func: calc_func_sig(SET_ROLE),
             },
             // cancelRole
             Resource {
                 cont: H160::from_str(reserved_addresses::ROLE_MANAGEMENT).unwrap(),
-                func: encode_contract_name(CANCEL_ROLE),
+                func: calc_func_sig(CANCEL_ROLE),
             },
             Resource {
                 cont: H160::from_str(reserved_addresses::ROLE_MANAGEMENT).unwrap(),
-                func: encode_contract_name(CLEAR_ROLE),
+                func: calc_func_sig(CLEAR_ROLE),
             },
             // newGroup
             Resource {
                 cont: H160::from_str(reserved_addresses::GROUP_MANAGEMENT).unwrap(),
-                func: encode_contract_name(NEW_GROUP),
+                func: calc_func_sig(NEW_GROUP),
             },
             // deleteGroup
             Resource {
                 cont: H160::from_str(reserved_addresses::GROUP_MANAGEMENT).unwrap(),
-                func: encode_contract_name(DELETE_GROUP),
+                func: calc_func_sig(DELETE_GROUP),
             },
             // updateGroup
             Resource {
                 cont: H160::from_str(reserved_addresses::GROUP_MANAGEMENT).unwrap(),
-                func: encode_contract_name(ADD_ACCOUNTS),
+                func: calc_func_sig(ADD_ACCOUNTS),
             },
             Resource {
                 cont: H160::from_str(reserved_addresses::GROUP_MANAGEMENT).unwrap(),
-                func: encode_contract_name(DELETE_ACCOUNTS),
+                func: calc_func_sig(DELETE_ACCOUNTS),
             },
             Resource {
                 cont: H160::from_str(reserved_addresses::GROUP_MANAGEMENT).unwrap(),
-                func: encode_contract_name(UPDATE_GROUPNAME),
+                func: calc_func_sig(UPDATE_GROUPNAME),
             },
             // senTx
             Resource {
@@ -445,31 +445,31 @@ mod tests {
             // new node
             Resource {
                 cont: H160::from_str(reserved_addresses::NODE_MANAGER).unwrap(),
-                func: encode_contract_name(APPROVE_NODE),
+                func: calc_func_sig(APPROVE_NODE),
             },
             // delete node
             Resource {
                 cont: H160::from_str(reserved_addresses::NODE_MANAGER).unwrap(),
-                func: encode_contract_name(DELETE_NODE),
+                func: calc_func_sig(DELETE_NODE),
             },
             // update node
             Resource {
                 cont: H160::from_str(reserved_addresses::NODE_MANAGER).unwrap(),
-                func: encode_contract_name(SET_STAKE),
+                func: calc_func_sig(SET_STAKE),
             },
             // accountQuota
             Resource {
                 cont: H160::from_str(reserved_addresses::QUOTA_MANAGER).unwrap(),
-                func: encode_contract_name(SET_DEFAULTAQL),
+                func: calc_func_sig(SET_DEFAULTAQL),
             },
             Resource {
                 cont: H160::from_str(reserved_addresses::QUOTA_MANAGER).unwrap(),
-                func: encode_contract_name(SET_AQL),
+                func: calc_func_sig(SET_AQL),
             },
             // blockQuota
             Resource {
                 cont: H160::from_str(reserved_addresses::QUOTA_MANAGER).unwrap(),
-                func: encode_contract_name(SET_BQL),
+                func: calc_func_sig(SET_BQL),
             },
         ];
         expected_resources.sort();
