@@ -34,8 +34,8 @@ const LIST_STAKE: &[u8] = &*b"listStake()";
 const EPOCH: u64 = 1000;
 
 lazy_static! {
-    static ref LIST_NODE_ENCODED: Vec<u8> = calc_func_sig(LIST_NODE);
-    static ref LIST_STAKE_ENCODED: Vec<u8> = calc_func_sig(LIST_STAKE);
+    static ref LIST_NODE_HASH: Vec<u8> = calc_func_sig(LIST_NODE);
+    static ref LIST_STAKE_HASH: Vec<u8> = calc_func_sig(LIST_STAKE);
     static ref CONTRACT_ADDRESS: H160 = H160::from_str(reserved_addresses::NODE_MANAGER).unwrap();
 }
 
@@ -77,7 +77,7 @@ impl<'a> NodeManager<'a> {
     pub fn nodes(&self) -> Vec<Address> {
         let output = self
             .executor
-            .call_method_latest(&*CONTRACT_ADDRESS, &*LIST_NODE_ENCODED.as_slice());
+            .call_method_latest(&*CONTRACT_ADDRESS, &*LIST_NODE_HASH.as_slice());
 
         trace!(
             "node manager output: {:?}",
@@ -92,7 +92,7 @@ impl<'a> NodeManager<'a> {
     pub fn stakes(&self) -> Vec<u64> {
         let output = self
             .executor
-            .call_method_latest(&*CONTRACT_ADDRESS, &*LIST_STAKE_ENCODED.as_slice());
+            .call_method_latest(&*CONTRACT_ADDRESS, &*LIST_STAKE_HASH.as_slice());
 
         trace!("stakes output: {:?}", ToHex::to_hex(output.as_slice()));
 

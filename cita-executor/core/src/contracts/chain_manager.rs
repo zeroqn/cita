@@ -29,8 +29,8 @@ const CHAIN_ID: &[u8] = &*b"getChainId()";
 const AUTHORITIES: &[u8] = &*b"getAuthorities(uint32)";
 
 lazy_static! {
-    static ref CHAIN_ID_ENCODED: Vec<u8> = calc_func_sig(CHAIN_ID);
-    static ref AUTHORITIES_ENCODED: Vec<u8> = calc_func_sig(AUTHORITIES);
+    static ref CHAIN_ID_HASH: Vec<u8> = calc_func_sig(CHAIN_ID);
+    static ref AUTHORITIES_HASH: Vec<u8> = calc_func_sig(AUTHORITIES);
     static ref CONTRACT_ADDRESS: H160 = H160::from_str(reserved_addresses::CHAIN_MANAGER).unwrap();
 }
 
@@ -40,7 +40,7 @@ impl ChainManagement {
     pub fn ext_chain_id(ext: &mut Ext, gas: &U256, sender: &Address) -> Option<(U256, u32)> {
         trace!("call system contract ChainManagement.ext_chain_id()");
         let contract = &*CONTRACT_ADDRESS;
-        let tx_data = CHAIN_ID_ENCODED.to_vec();
+        let tx_data = CHAIN_ID_HASH.to_vec();
         let data = &tx_data.as_slice();
         let mut output = Vec::<u8>::new();
         match ext.call(
@@ -75,7 +75,7 @@ impl ChainManagement {
             chain_id
         );
         let contract = &*CONTRACT_ADDRESS;
-        let mut tx_data = AUTHORITIES_ENCODED.to_vec();
+        let mut tx_data = AUTHORITIES_HASH.to_vec();
         let param = H256::from(u64::from(chain_id));
         tx_data.extend(param.to_vec());
         let data = &tx_data.as_slice();

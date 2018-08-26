@@ -31,21 +31,21 @@ use libexecutor::executor::{EconomicalModel, Executor};
 use num::FromPrimitive;
 
 lazy_static! {
-    static ref DELAY_BLOCK_NUMBER: Vec<u8> = calc_func_sig(b"getDelayBlockNumber()");
-    static ref PERMISSION_CHECK: Vec<u8> = calc_func_sig(b"getPermissionCheck()");
-    static ref QUOTA_CHECK: Vec<u8> = calc_func_sig(b"getQuotaCheck()");
-    static ref FEE_BACK_PLATFORM_CHECK: Vec<u8> =
+    static ref DELAY_BLOCK_NUMBER_HASH: Vec<u8> = calc_func_sig(b"getDelayBlockNumber()");
+    static ref PERMISSION_CHECK_HASH: Vec<u8> = calc_func_sig(b"getPermissionCheck()");
+    static ref QUOTA_CHECK_HASH: Vec<u8> = calc_func_sig(b"getQuotaCheck()");
+    static ref FEE_BACK_PLATFORM_CHECK_HASH: Vec<u8> =
         calc_func_sig(b"getFeeBackPlatformCheck()");
-    static ref CHAIN_OWNER: Vec<u8> = calc_func_sig(b"getChainOwner()");
-    static ref CHAIN_NAME: Vec<u8> = calc_func_sig(b"getChainName()");
-    static ref CHAIN_ID: Vec<u8> = calc_func_sig(b"getChainId()");
-    static ref OPERATOR: Vec<u8> = calc_func_sig(b"getOperator()");
-    static ref WEBSITE: Vec<u8> = calc_func_sig(b"getWebsite()");
-    static ref BLOCK_INTERVAL: Vec<u8> = calc_func_sig(b"getBlockInterval()");
+    static ref CHAIN_OWNER_HASH: Vec<u8> = calc_func_sig(b"getChainOwner()");
+    static ref CHAIN_NAME_HASH: Vec<u8> = calc_func_sig(b"getChainName()");
+    static ref CHAIN_ID_HASH: Vec<u8> = calc_func_sig(b"getChainId()");
+    static ref OPERATOR_HASH: Vec<u8> = calc_func_sig(b"getOperator()");
+    static ref WEBSITE_HASH: Vec<u8> = calc_func_sig(b"getWebsite()");
+    static ref BLOCK_INTERVAL_HASH: Vec<u8> = calc_func_sig(b"getBlockInterval()");
+    static ref ECONOMICAL_MODEL_HASH: Vec<u8> = calc_func_sig(b"getEconomicalModel()");
+    static ref GET_TOKEN_INFO_HASH: Vec<u8> = calc_func_sig(b"getTokenInfo()");
     static ref CONTRACT_ADDRESS: Address =
         Address::from_str(reserved_addresses::SYS_CONFIG).unwrap();
-    static ref ECONOMICAL_MODEL: Vec<u8> = calc_func_sig(b"getEconomicalModel()");
-    static ref GET_TOKEN_INFO: Vec<u8> = calc_func_sig(b"getTokenInfo()");
 }
 
 #[derive(PartialEq, Debug)]
@@ -88,7 +88,7 @@ impl<'a> SysConfig<'a> {
     /// Delay block number before validate
     pub fn delay_block_number(&self) -> u64 {
         let value = self
-            .get_latest_value(&[ParamType::Uint(256)], DELAY_BLOCK_NUMBER.as_slice())
+            .get_latest_value(&[ParamType::Uint(256)], DELAY_BLOCK_NUMBER_HASH.as_slice())
             .remove(0)
             .to_uint()
             .expect("decode delay number");
@@ -100,7 +100,7 @@ impl<'a> SysConfig<'a> {
     /// Whether check permission or not
     pub fn permission_check(&self) -> bool {
         let check = self
-            .get_latest_value(&[ParamType::Bool], PERMISSION_CHECK.as_slice())
+            .get_latest_value(&[ParamType::Bool], PERMISSION_CHECK_HASH.as_slice())
             .remove(0)
             .to_bool()
             .expect("decode check permission");
@@ -111,7 +111,7 @@ impl<'a> SysConfig<'a> {
     /// Whether check quota or not
     pub fn quota_check(&self) -> bool {
         let check = self
-            .get_latest_value(&[ParamType::Bool], QUOTA_CHECK.as_slice())
+            .get_latest_value(&[ParamType::Bool], QUOTA_CHECK_HASH.as_slice())
             .remove(0)
             .to_bool()
             .expect("decode check quota");
@@ -124,7 +124,7 @@ impl<'a> SysConfig<'a> {
         let check =
             self.get_value(
                 &[ParamType::Bool],
-                FEE_BACK_PLATFORM_CHECK.as_slice(),
+                FEE_BACK_PLATFORM_CHECK_HASH.as_slice(),
                 Some(BlockId::Latest),
             ).ok()
                 .and_then(|mut x| x.remove(0).to_bool())
@@ -138,7 +138,7 @@ impl<'a> SysConfig<'a> {
         let chain_owner =
             self.get_value(
                 &[ParamType::Address],
-                CHAIN_OWNER.as_slice(),
+                CHAIN_OWNER_HASH.as_slice(),
                 Some(BlockId::Latest),
             ).ok()
                 .and_then(|mut x| x.remove(0).to_address())
@@ -150,7 +150,7 @@ impl<'a> SysConfig<'a> {
     /// The name of current chain
     pub fn chain_name(&self, block_id: Option<BlockId>) -> Result<String, String> {
         let mut chain_name_bs =
-            self.get_value(&[ParamType::String], CHAIN_NAME.as_slice(), block_id)?;
+            self.get_value(&[ParamType::String], CHAIN_NAME_HASH.as_slice(), block_id)?;
         chain_name_bs
             .remove(0)
             .to_string()
@@ -160,7 +160,7 @@ impl<'a> SysConfig<'a> {
     /// The id of current chain
     pub fn chain_id(&self) -> u32 {
         let value = self
-            .get_latest_value(&[ParamType::Uint(64)], CHAIN_ID.as_slice())
+            .get_latest_value(&[ParamType::Uint(64)], CHAIN_ID_HASH.as_slice())
             .remove(0)
             .to_uint()
             .expect("decode chain id");
@@ -171,7 +171,7 @@ impl<'a> SysConfig<'a> {
 
     /// The operator of current chain
     pub fn operator(&self, block_id: Option<BlockId>) -> Result<String, String> {
-        let mut operator_bs = self.get_value(&[ParamType::String], OPERATOR.as_slice(), block_id)?;
+        let mut operator_bs = self.get_value(&[ParamType::String], OPERATOR_HASH.as_slice(), block_id)?;
         operator_bs
             .remove(0)
             .to_string()
@@ -180,7 +180,7 @@ impl<'a> SysConfig<'a> {
 
     /// Current operator's website URL
     pub fn website(&self, block_id: Option<BlockId>) -> Result<String, String> {
-        let mut website_bs = self.get_value(&[ParamType::String], WEBSITE.as_slice(), block_id)?;
+        let mut website_bs = self.get_value(&[ParamType::String], WEBSITE_HASH.as_slice(), block_id)?;
         website_bs
             .remove(0)
             .to_string()
@@ -190,7 +190,7 @@ impl<'a> SysConfig<'a> {
     /// The interval time for creating a block (milliseconds)
     pub fn block_interval(&self) -> u64 {
         let value = self
-            .get_latest_value(&[ParamType::Uint(64)], BLOCK_INTERVAL.as_slice())
+            .get_latest_value(&[ParamType::Uint(64)], BLOCK_INTERVAL_HASH.as_slice())
             .remove(0)
             .to_uint()
             .expect("decode block interval");
@@ -204,7 +204,7 @@ impl<'a> SysConfig<'a> {
     /// Charge: Charging by gas * gasPrice and reward for proposer
     pub fn economical_model(&self) -> EconomicalModel {
         let value = self
-            .get_latest_value(&[ParamType::Uint(64)], ECONOMICAL_MODEL.as_slice())
+            .get_latest_value(&[ParamType::Uint(64)], ECONOMICAL_MODEL_HASH.as_slice())
             .remove(0)
             .to_uint()
             .expect("decode economical model");
@@ -217,7 +217,7 @@ impl<'a> SysConfig<'a> {
         let address = &*CONTRACT_ADDRESS;
         let output = self
             .executor
-            .call_method_latest(address, GET_TOKEN_INFO.as_slice());
+            .call_method_latest(address, GET_TOKEN_INFO_HASH.as_slice());
         let mut token_info = decode(
             &[ParamType::String, ParamType::String, ParamType::String],
             &output,
