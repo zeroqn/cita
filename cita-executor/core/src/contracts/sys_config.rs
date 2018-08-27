@@ -80,7 +80,7 @@ impl<'a> SysConfig<'a> {
 
     fn get_latest_value(&self, param_types: &[ParamType], method: &[u8]) -> Vec<Token> {
         let address = &*CONTRACT_ADDRESS;
-        let output = self.executor.call_method_latest(address, method);
+        let output = self.executor.call_method_on_latest(address, method);
         trace!("sys_config value output: {:?}", output);
         decode(param_types, &output).expect("decode value error")
     }
@@ -217,7 +217,7 @@ impl<'a> SysConfig<'a> {
         let address = &*CONTRACT_ADDRESS;
         let output = self
             .executor
-            .call_method_latest(address, GET_TOKEN_INFO_HASH.as_slice());
+            .call_method_on_latest(address, GET_TOKEN_INFO_HASH.as_slice());
         let mut token_info = decode(
             &[ParamType::String, ParamType::String, ParamType::String],
             &output,

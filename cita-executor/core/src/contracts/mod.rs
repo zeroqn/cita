@@ -49,7 +49,7 @@ trait ContractCallExt {
         block_id: BlockId,
     ) -> Result<Bytes, String>;
     /// Call a contract method on latest block
-    fn call_method_latest(&self, address: &Address, encoded_method: &[u8]) -> Vec<u8> {
+    fn call_method_on_latest(&self, address: &Address, encoded_method: &[u8]) -> Vec<u8> {
         self.call_method(address, encoded_method, None, BlockId::Latest)
             .unwrap()
     }
