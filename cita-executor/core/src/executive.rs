@@ -29,12 +29,9 @@ use evm::env_info::EnvInfo;
 use evm::{self, Factory, FinalizationResult, Finalize, ReturnData, Schedule};
 pub use executed::{Executed, ExecutionResult};
 use externalities::*;
-use grpc_contracts;
-use grpc_contracts::contract::{
-    create_grpc_contract, invoke_grpc_contract, is_create_grpc_address, is_grpc_contract,
+use grpc_contracts::{
+    self, contract::{self as grpc_contract, GrpcContract}, grpc_vm::extract_logs_from_response, service_registry
 };
-use grpc_contracts::grpc_vm::extract_logs_from_response;
-use grpc_contracts::service_registry;
 use libexecutor::executor::EconomicalModel;
 use native::factory::Contract as NativeContract;
 use native::factory::Factory as NativeFactory;
@@ -830,9 +827,8 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
             )
         } else if self.is_amend_data_address(params.code_address) {
             self.call_amend_data(params, substate, &output)
-        } else if is_create_grpc_address(params.code_address)
-            || is_grpc_contract(params.code_address)
-        {
+        } else if grpc_contract::is_creation(params)
+            || grpc_contract::is_validate(params) {
             self.call_grpc_contract(params, substate, &output)
         } else if let Some(builtin) = self.engine.builtin(&params.code_address, self.info.number) {
             // check and call Builtin contract
@@ -919,61 +915,30 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         substate: &mut Substate,
         _output: &BytesRef,
     ) -> evm::Result<FinalizationResult> {
-        let is_create = is_create_grpc_address(params.code_address);
-        let address = if is_create {
-            match params.data.clone() {
-                Some(data) => Address::from_slice(&data),
-                _ => {
-                    return Err(evm::error::Error::Internal(
-                        "GRPC contract creation without data field".to_string(),
-                    ));
-                }
-            }
-        } else {
-            params.code_address
-        };
+        use evm::error::Error as EvmError;
 
-        let connect_info = match service_registry::find_contract(address, !is_create) {
-            Some(contract_state) => contract_state.conn_info,
-            None => {
-                return Err(evm::error::Error::Internal(format!(
-                    "can't find grpc contract from address: {:?}",
-                    address
-                )));
-            }
-        };
+        let response = GrpcContract::new(self.info, &params, self.state)?
+                .invoke(true, true).map_err(|e| EvmError::Internal(e.description().to_string()))?;
 
-        let response = if is_create {
-            service_registry::enable_contract(address);
-            create_grpc_contract(self.info, &params, self.state, true, true, &connect_info)
-        } else {
-            invoke_grpc_contract(self.info, &params, self.state, true, true, &connect_info)
-        };
-        match response {
-            Ok(invoke_response) => {
-                // store grpc return storages to stateDB
-                for storage in &invoke_response.get_storages()[..] {
-                    let key = storage.get_key();
-                    let value = storage.get_value();
-                    trace!("recv resp: {:?}", storage);
-                    trace!("key: {:?}, value: {:?}", key, value);
-                    grpc_contracts::storage::set_storage(self.state, params.address, key, value)
-                        .unwrap();
-                }
-
-                // update contract_state.height
-                service_registry::set_enable_contract_height(params.address, self.info.number);
-                substate.logs = extract_logs_from_response(params.address, &invoke_response);
-                let message = invoke_response.get_message();
-
-                Ok(FinalizationResult {
-                    gas_left: U256::from_str(invoke_response.get_gas_left()).unwrap(),
-                    apply_state: true,
-                    return_data: ReturnData::new(message.as_bytes().to_vec(), 0, message.len()),
-                })
-            }
-            Err(e) => Err(evm::error::Error::Internal(e.description().to_string())),
+        // store grpc return storages to stateDB
+        for storage in &response.get_storages()[..] {
+            let key = storage.get_key();
+            let value = storage.get_value();
+            trace!("recv resp: {:?}", storage);
+            trace!("key: {:?}, value: {:?}", key, value);
+            grpc_contracts::storage::set_storage(self.state, params.address, key, value).unwrap();
         }
+
+        // update contract_state.height
+        service_registry::set_enable_contract_height(params.address, self.info.number);
+        substate.logs = extract_logs_from_response(params.address, &response);
+        let message = response.get_message();
+
+        Ok(FinalizationResult {
+            gas_left: U256::from_str(response.get_gas_left()).unwrap(),
+            apply_state: true,
+            return_data: ReturnData::new(message.as_bytes().to_vec(), 0, message.len()),
+        })
     }
 
     fn call_evm_contract<T, V>(
