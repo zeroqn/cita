@@ -111,7 +111,7 @@ pub fn to_u256_vec(output: &[u8]) -> Vec<U256> {
 
 /// Parse solidity return data `uint256` to rust `u64`
 pub fn to_u256(output: &[u8]) -> U256 {
-    let mut decoded = decode(&[ParamType::Uint(256)], &output).expect("decode quota");
+    let mut decoded = decode(&[ParamType::Uint(256)], &output).expect("decode U256");
     let result = decoded.remove(0).to_uint();
 
     let h256 = H256::from(result.expect("decode u256"));
