@@ -19,7 +19,6 @@
 
 use super::calc_func_sig;
 use cita_types::{Address, H160, H256, U256};
-use ethabi::{decode, ParamType};
 use evm::call_type::CallType;
 use evm::ext::{Ext, MessageCallResult};
 use std::str::FromStr;
@@ -54,11 +53,8 @@ impl ChainManagement {
             CallType::Call,
         ) {
             MessageCallResult::Success(gas_left, return_data) => {
-                decode(&[ParamType::Uint(256)], &*return_data)
-                    .ok()
-                    .and_then(|decoded| decoded.first().cloned())
-                    .and_then(|id| id.to_uint())
-                    .map(|id| (gas_left, H256::from(id).low_u64() as u32))
+                let id = super::to_u256(&return_data).low_u64() as u32;
+                Some((gas_left, id))
             }
             MessageCallResult::Reverted(..) | MessageCallResult::Failed => None,
         }
@@ -95,30 +91,8 @@ impl ChainManagement {
                     "call system contract ChainManagement.ext_authorities() return [{:?}]",
                     return_data
                 );
-                decode(
-                    &[ParamType::Array(Box::new(ParamType::Address))],
-                    &return_data,
-                ).ok()
-                    .map(|decoded| {
-                        trace!(
-                            "call system contract ChainManagement.ext_authorities() decoded [{:?}]",
-                            decoded
-                        );
-                        decoded
-                    })
-                    .and_then(|decoded| decoded.first().cloned())
-                    .and_then(|decoded| decoded.to_array())
-                    .and_then(|addrs| {
-                        let mut addrs_vec = Vec::new();
-                        for a in addrs {
-                            let a = a.to_address()?;
-                            addrs_vec.push(Address::from(a));
-                        }
-                        if addrs_vec.is_empty() {
-                            return None;
-                        }
-                        Some((gas_left, addrs_vec))
-                    })
+                let addresses = super::to_address_vec(&return_data);
+                Some((gas_left, addresses))
             }
             MessageCallResult::Reverted(..) | MessageCallResult::Failed => None,
         }
