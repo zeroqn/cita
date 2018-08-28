@@ -94,8 +94,8 @@ impl<'a> Executable<'a>
 
         match check_mode {
             CheckMode::Permission => self.check_permission()?,
-            CheckMode::Quota => self.check_quota()?,
-            CheckMode::Both => { self.check_permission()?; self.check_quota()? },
+            CheckMode::Quota => ()?,
+            CheckMode::Both => { self.check_permission()? },
             CheckMode::Pass => (),
         }
 

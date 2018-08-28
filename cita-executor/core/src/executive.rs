@@ -520,7 +520,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         let nonce = self.state.nonce(&sender)?;
         self.state.inc_nonce(&sender)?;
 
-        // do permission and quota checking
+        // do basic, permission and quota checking
         {
             let check_mode = CheckMode::new(options.check_permission, options.check_quota);
             trace!("check mode: {}", check_mode);
@@ -528,16 +528,6 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
             Executable::new(t, self.state, self.info, U256::from(MIN_GAS_REQUIRED))
                 .checked(&check_mode)?;
         }
-
-        /*trace!("quota should be checked: {}", options.check_quota);
-        if options.check_quota {
-            check_quota(
-                self.info.gas_used,
-                self.info.gas_limit,
-                self.info.account_gas_limit,
-                t,
-            )?;
-        }*/
 
         if t.action == Action::AbiStore {
             if !self.transact_set_abi(&t.data) {
