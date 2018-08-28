@@ -525,14 +525,8 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
             let check_mode = CheckMode::new(options.check_permission, options.check_quota);
             trace!("check mode: {}", check_mode);
 
-            Executable::new(t, self.state, self.info, check_mode).checked()?;
-        }
-
-        if sender != Address::zero() && t.gas < U256::from(MIN_GAS_REQUIRED) {
-            return Err(ExecutionError::NotEnoughBaseGas {
-                required: U256::from(MIN_GAS_REQUIRED),
-                got: t.gas,
-            });
+            Executable::new(t, self.state, self.info, U256::from(MIN_GAS_REQUIRED))
+                .checked(&check_mode)?;
         }
 
         if t.action == Action::AmendData {

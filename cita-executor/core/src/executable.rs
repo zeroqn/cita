@@ -59,7 +59,7 @@ pub struct Executable<'a> {
     group_accounts: &'a GroupAccounts,
     account_perms: &'a AccountPerms,
 
-    check_mode: CheckMode,
+    minimal_gas: U256,
     gas_used: U256,
     gas_limit: U256,
     account_gas_limit: U256,
@@ -71,7 +71,7 @@ impl<'a> Executable<'a>
         tx: &'a SignedTransaction,
         state: &'a State<B>,
         info: &'a EnvInfo,
-        check_mode: CheckMode
+        minimal_gas: U256,
     ) -> Executable<'a> {
         Self {
             sender: *tx.sender(),
@@ -80,15 +80,17 @@ impl<'a> Executable<'a>
             group_accounts: &state.group_accounts,
             account_perms: &state.account_permissions,
 
-            check_mode,
+            minimal_gas,
             gas_used: info.gas_used,
             gas_limit: info.gas_limit,
             account_gas_limit: info.account_gas_limit,
         }
     }
 
-    pub fn checked(self) -> Result<(), ExecutionError> {
-        match self.check_mode {
+    pub fn checked(self, check_mode: &CheckMode) -> Result<(), ExecutionError> {
+        self.check_tx_gas()?;
+
+        match check_mode {
             CheckMode::Permission => self.check_permission()?,
             CheckMode::Quota => self.check_quota()?,
             CheckMode::Both => { self.check_permission()?; self.check_quota()? },
@@ -132,6 +134,14 @@ impl<'a> Executable<'a>
                     gas: tx_gas,
                 })?
             }
+        }
+
+        Ok(())
+    }
+
+    fn check_tx_gas(&self) -> Result<(), ExecutionError> {
+        if self.sender != Address::zero() && self.tx.gas < self.minimal_gas {
+            Err(ExecutionError::NotEnoughBaseGas {required: self.minimal_gas, got: self.tx.gas})?
         }
 
         Ok(())
