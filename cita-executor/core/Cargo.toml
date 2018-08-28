@@ -43,6 +43,7 @@ ethabi = "4.2.0"
 zktx = { git = "https://github.com/cryptape/zktx.git", optional = true }
 enum_primitive = "0.1.1"
 largest-remainder-method = "0.1"
+bitflags = "1.0.4"
 
 [dev-dependencies]
 rand = "0.3"

@@ -19,7 +19,7 @@ use cita_types::traits::LowerHex;
 use cita_types::{Address, H256, U256};
 use db::{self as db, Writable};
 use error::{Error, ExecutionError};
-use executive::{check_permission, TransactOptions};
+use executive::TransactOptions;
 use grpc::Result as GrpcResult;
 
 use contracts::grpc::{
@@ -126,6 +126,8 @@ impl<'a, B: 'a + StateBackend> CallEvmImpl<'a, B> {
         connect_info: &ConnectInfo,
         options: &TransactOptions,
     ) -> Result<Receipt, Error> {
+        use executable_check::{ExecutableCheck, PermCheck, CheckFlags};
+
         let mut invoke_request = InvokeRequest::new();
         invoke_request.set_param(action_params.to_owned());
         invoke_request.set_env_info(env_info.to_owned());
@@ -134,14 +136,13 @@ impl<'a, B: 'a + StateBackend> CallEvmImpl<'a, B> {
         let nonce = self.state.nonce(&sender).map_err(|err| *err)?;
         self.state.inc_nonce(&sender).map_err(|err| *err)?;
 
-        trace!("permission should be check: {}", self.check_permission);
-        if self.check_permission {
-            check_permission(
-                &self.state.group_accounts,
-                &self.state.account_permissions,
-                t,
-                options,
-            )?;
+        {
+            if self.check_permission {
+                let check_flags = CheckFlags::from_transact_opts(options);
+                trace!("check flags: {:?}", check_flags);
+
+                PermCheck::new(self.state, check_flags).checked(t)?;
+            }
         }
 
         let base_gas_required = U256::from(100); // `CREATE` transaction cost

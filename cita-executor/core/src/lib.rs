@@ -35,6 +35,8 @@ extern crate serde_json;
 extern crate serde_json;
 #[macro_use]
 extern crate util;
+#[macro_use]
+extern crate bitflags;
 
 #[macro_use]
 extern crate rlp_derive;
@@ -86,6 +88,7 @@ pub mod basic_types;
 pub mod builtin;
 pub mod cache_manager;
 pub mod executive;
+pub mod executable_check;
 pub mod externalities;
 pub mod header;
 pub mod pod_account;
