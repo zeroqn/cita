@@ -514,18 +514,18 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
         T: Tracer,
         V: VMTracer,
     {
+        use executable::{Executable, CheckMode};
+
         let sender = *t.sender();
         let nonce = self.state.nonce(&sender)?;
-
         self.state.inc_nonce(&sender)?;
 
-        trace!("permission should be check: {}", options.check_permission);
-        if options.check_permission {
-            check_permission(
-                &self.state.group_accounts,
-                &self.state.account_permissions,
-                t,
-            )?;
+        // do permission and quota checking
+        {
+            let check_mode = CheckMode::new(options.check_permission, options.check_quota);
+            trace!("check mode: {}", check_mode);
+
+            Executable::new(t, self.state, self.info, check_mode).checked()?;
         }
 
         if sender != Address::zero() && t.gas < U256::from(MIN_GAS_REQUIRED) {
