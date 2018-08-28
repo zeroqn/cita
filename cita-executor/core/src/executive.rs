@@ -529,16 +529,6 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
                 .checked(&check_mode)?;
         }
 
-        if t.action == Action::AmendData {
-            if let Some(admin) = self.state.super_admin_account {
-                if *t.sender() != admin {
-                    return Err(ExecutionError::NoTransactionPermission);
-                }
-            } else {
-                return Err(ExecutionError::NoTransactionPermission);
-            }
-        }
-
         /*trace!("quota should be checked: {}", options.check_quota);
         if options.check_quota {
             check_quota(

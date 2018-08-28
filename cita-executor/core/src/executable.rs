@@ -56,6 +56,7 @@ pub struct Executable<'a> {
     sender: Address,
     tx: &'a SignedTransaction,
 
+    super_admin_account: Option<Address>,
     group_accounts: &'a GroupAccounts,
     account_perms: &'a AccountPerms,
 
@@ -77,6 +78,7 @@ impl<'a> Executable<'a>
             sender: *tx.sender(),
             tx,
 
+            super_admin_account: state.super_admin_account,
             group_accounts: &state.group_accounts,
             account_perms: &state.account_permissions,
 
@@ -106,6 +108,7 @@ impl<'a> Executable<'a>
         match self.tx.action {
             Action::Create => self.check_contract_creatable()?,
             Action::Call(address) => self.check_contract_callable(&address)?,
+            Action::AmendData => self.check_super_admin()?,
             _ => {}
         }
 
@@ -161,6 +164,18 @@ impl<'a> Executable<'a>
         }
 
         Ok(())
+    }
+
+    fn check_super_admin(&self) -> Result<(), ExecutionError> {
+        self.super_admin_account
+            .ok_or(ExecutionError::NoTransactionPermission)
+            .and_then(|admin| {
+                if self.sender != admin {
+                    Err(ExecutionError::NoTransactionPermission)
+                } else {
+                    Ok(())
+                }
+            })
     }
 
     fn check_contract_creatable(&self) -> Result<(), ExecutionError> {
